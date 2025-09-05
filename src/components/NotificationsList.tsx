@@ -12,10 +12,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Bell, CheckCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useIsClient } from '@/hooks/use-is-client';
 
 type Notification = Tables<'notifications'>;
 
 export function NotificationsList() {
+  const isClient = useIsClient();
   const { user } = useAuth();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -98,7 +100,7 @@ export function NotificationsList() {
         <CardTitle>Centre de Notifications</CardTitle>
       </CardHeader>
       <CardContent>
-        {notifications.length > 0 ? (
+        {isClient || notifications.length > 0 ? (
           <div className="space-y-4">
             {notifications.map((notif) => (
               <div key={notif.id} className={`p-4 rounded-lg flex items-start gap-4 ${notif.is_read ? 'bg-gray-100 dark:bg-gray-800' : 'bg-blue-50 dark:bg-blue-900/20'}`}>

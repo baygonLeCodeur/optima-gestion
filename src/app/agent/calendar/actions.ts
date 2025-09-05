@@ -22,13 +22,48 @@ export async function updateVisitStatusAction(visitId: string, newStatus: 'Confi
 }
 
 export async function updateAvailabilitiesAction(prevState: any, formData: FormData): Promise<{ success: boolean; error?: string | null }> {
-    const { supabase, session } = await getSupabaseAndSession();
-    const daysOfWeek = [0, 1, 2, 3, 4, 5, 6];
-    const availabilitiesToUpsert = daysOfWeek.map(dayId => ({ agent_id: session.user.id, day_of_week: dayId, is_available: formData.get(`day_${dayId}_available`) === 'on', start_time: formData.get(`day_${dayId}_start`) as string, end_time: formData.get(`day_${dayId}_end`) as string }));
-    const { error } = await supabase.from('agent_availabilities').upsert(availabilitiesToUpsert, { onConflict: 'agent_id, day_of_week' });
-    if (error) { console.error("Erreur (maj disponibilités):", error); return { success: false, error: "La mise à jour des disponibilités a échoué." }; }
-    revalidatePath('/agent/calendar');
-    return { success: true, error: null };
+    try {
+        const { supabase, session } = await getSupabaseAndSession();
+        const daysOfWeek = [0, 1, 2, 3, 4, 5, 6];
+        
+        console.log('FormData entries:', Array.from(formData.entries())); // Debug
+        
+        const availabilitiesToUpsert = daysOfWeek.map(dayId => {
+            const isAvailable = formData.get(`day_${dayId}_available`) === 'on';
+            const startTime = formData.get(`day_${dayId}_start`) as string;
+            const endTime = formData.get(`day_${dayId}_end`) as string;
+            
+            return {
+                agent_id: session.user.id,
+                day_of_week: dayId,
+                is_available: isAvailable,
+                // Utiliser des valeurs par défaut au lieu de null pour respecter les contraintes NOT NULL
+                start_time: isAvailable ? startTime : '09:00',
+                end_time: isAvailable ? endTime : '17:00'
+            };
+        });
+        
+        console.log('Data to upsert:', availabilitiesToUpsert); // Debug
+        
+        // Upsert efficace - remplace la stratégie delete-insert
+        const { error } = await supabase
+            .from('agent_availabilities')
+            .upsert(availabilitiesToUpsert, { 
+                onConflict: 'agent_id,day_of_week' 
+            });
+            
+        if (error) {
+            console.error("Erreur upsert:", error);
+            return { success: false, error: "Erreur lors de la mise à jour des disponibilités." };
+        }
+        
+        revalidatePath('/agent/calendar');
+        return { success: true, error: null };
+        
+    } catch (error) {
+        console.error("Erreur générale:", error);
+        return { success: false, error: "Une erreur inattendue s'est produite." };
+    }
 }
 
 export async function rescheduleVisitAction(visitId: string, newDate: string): Promise<{ success: boolean; error?: string }> {

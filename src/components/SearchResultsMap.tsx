@@ -1,5 +1,6 @@
 // src/components/SearchResultsMap.tsx
-'use client';
+
+"use client";
 
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -8,14 +9,15 @@ import { PropertyCardType } from '@/types';
 import Link from 'next/link';
 
 // --- Icône personnalisée pour les biens ---
-const propertyIcon = new L.Icon({
-  iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png`,
-  shadowUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+// Correction pour s'assurer que l'icône est correctement initialisée côté client
+// et éviter les problèmes de chemin d'accès avec les outils de build.
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+} );
+
 
 // --- Props du composant ---
 interface SearchResultsMapProps {
@@ -24,19 +26,14 @@ interface SearchResultsMapProps {
 
 // --- Composant ---
 export function SearchResultsMap({ properties }: SearchResultsMapProps) {
-  // Empêche le rendu côté serveur où `window` n'est pas défini
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
   // Filtre les propriétés qui n'ont pas de coordonnées valides
   const validProperties = properties.filter(p => p.latitude != null && p.longitude != null);
 
   // Si aucune propriété valide, ne rend pas la carte
   if (validProperties.length === 0) {
     return (
-        <div className="flex items-center justify-center h-full bg-gray-100 rounded-md">
-            <p className="text-gray-500">Aucune propriété avec des coordonnées à afficher.</p>
+        <div className="flex items-center justify-center h-full bg-gray-100 rounded-md" style={{ height: '600px' }}>
+            <p className="text-gray-500">Aucune propriété avec des coordonnées à afficher sur la carte.</p>
         </div>
     );
   }
@@ -57,7 +54,6 @@ export function SearchResultsMap({ properties }: SearchResultsMapProps) {
         <Marker
           key={property.id}
           position={[property.latitude!, property.longitude!]}
-          icon={propertyIcon}
         >
           <Popup>
             <div className="font-semibold">{property.type}</div>
@@ -68,7 +64,10 @@ export function SearchResultsMap({ properties }: SearchResultsMapProps) {
             </Link>
           </Popup>
         </Marker>
-      ))}
+       ))}
     </MapContainer>
   );
 }
+
+// On exporte par défaut pour faciliter l'import dynamique
+export default SearchResultsMap;

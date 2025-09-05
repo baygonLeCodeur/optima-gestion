@@ -1,92 +1,100 @@
-// src/app/api/visits/route.ts
-import { NextResponse } from 'next/server';
-// On importe notre nouveau "Super Client"
-import { supabaseAdmin } from '@/lib/supabase/admin';
-// On importe aussi le client serveur standard pour vérifier si un utilisateur est connecté
-import { createClient } from '@/lib/supabase/server';
-
-export async function POST(request: Request) {
-  // On utilise le client admin qui a les droits pour outrepasser les RLS
-  const supabase = supabaseAdmin;
-  
-  try {
-    const body = await request.json();
-  const { fullName, email, phone, message, propertyId, agentId, clientId } = body;
-
-    if (!fullName || !email || !propertyId || !agentId) {
-      return NextResponse.json({ message: 'Champs requis manquants' }, { status: 400 });
-    }
-
-    // --- LOGIQUE SIMPLIFIÉE : Créer ou mettre à jour un lead ---
+ // src/app/api/visits/route.ts
+ import { NextResponse } from 'next/server';
+ import { supabaseAdmin } from '@/lib/supabase/admin';
+ import { createClient } from '@/lib/supabase/server';
+ 
+ export async function POST(request: Request) {
+   const supabase = supabaseAdmin;
+   const body = await request.json();
+ 
+      // --- CAS 1: L'utilisateur est connecté (formulaire de prise de RDV) ---
+      if (body.client_id && body.scheduled_at) {
+        const { property_id, agent_id, client_id, scheduled_at, client_notes } = body;
     
-    // 1. Chercher un prospect existant avec cet email
-    let { data: existingLead } = await supabase
-      .from('leads')
-      .select('id')
-      .eq('email', email)
-      .single();
-
-    if (existingLead) {
-      // Mettre à jour le lead existant avec les nouvelles informations
-      const { error: updateError } = await supabase
-        .from('leads')
-        .update({
-          full_name: fullName,
-          phone_number: phone,
-          interest: `Demande de visite pour le bien ID: ${propertyId}. Message: ${message || 'Aucun message'}`,
-          assigned_agent_id: agentId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existingLead.id);
-      
-      if (updateError) {
-        console.error('Erreur lors de la mise à jour du lead:', updateError);
-        throw updateError;
+        // Vérification de sécurité minimale
+        if (!property_id || !agent_id || !client_id || !scheduled_at) {
+          return NextResponse.json({ error: 'Données manquantes pour créer la visite.' }, { status: 400 });
+        }
+    
+        // On vérifie que l'utilisateur qui fait la requête est bien celui concerné
+        const supabaseServer = await createClient(); // <-- CORRECTION ICI
+        const { data: { user } } = await supabaseServer.auth.getUser();
+        if (!user || user.id !== client_id) {
+            return NextResponse.json({ error: 'Action non autorisée.' }, { status: 403 });
+        }
+    
+        try {
+          const { data, error } = await supabase
+            .from('visits')
+            .insert({
+              property_id,
+              agent_id,
+              client_id,
+              scheduled_at,
+              client_notes,
+              status: 'pending',
+            })
+            .select()
+            .single();
+    
+          if (error) {
+            console.error('Erreur Supabase (création visite):', error);
+            throw error;
+          }
+    
+          return NextResponse.json({ message: 'Visite enregistrée avec succès.', data }, { status: 201 });
+    
+        } catch (error: any) {
+          return NextResponse.json({ error: 'Erreur interne du serveur.', details: error.message }, { status: 500 });
+        }
       }
-    } else {
-      // Créer un nouveau lead
-      const { error: newLeadError } = await supabase
-        .from('leads')
-        .insert({
-          full_name: fullName,
+    
+      // --- CAS 2: L'utilisateur n'est pas connecté (formulaire de contact/lead) ---
+      const { name, email, phone, message, agentId, propertyId } = body;
+    
+      if (!name || !email || !agentId) {
+        return NextResponse.json({ error: 'Champs requis manquants pour créer un prospect.' }, { status: 400 });
+      }
+    
+      try {
+        // On cherche si un lead avec cet email existe déjà
+        const { data: existingLead, error: findError } = await supabase
+          .from('leads')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
+    
+        if (findError) throw findError;
+    
+        const leadData = {
+          full_name: name,
           email: email,
-          phone_number: phone,
-          status: 'new',
-          source: 'Visit Request Form',
+          phone_number: phone, // Ajout du numéro de téléphone
           assigned_agent_id: agentId,
-          interest: `Demande de visite pour le bien ID: ${propertyId}. Message: ${message || 'Aucun message'}`
-        });
-      
-      if (newLeadError) {
-        console.error('Erreur lors de la création du lead:', newLeadError);
-        throw newLeadError;
+          interest: `Intérêt pour le bien ID: ${propertyId || 'non spécifié'}. Message: ${message || 'Aucun message.'}`,
+          source: 'Agent Contact Form',
+          status: 'new',
+        };
+    
+        if (existingLead) {
+          // Mettre à jour le lead existant
+          const { error: updateError } = await supabase
+            .from('leads')
+            .update(leadData)
+            .eq('id', existingLead.id);
+          if (updateError) throw updateError;
+        } else {
+          // Créer un nouveau lead
+          const { error: insertError } = await supabase
+            .from('leads')
+            .insert(leadData);
+          if (insertError) throw insertError;
+        }
+    
+        return NextResponse.json({ message: 'Prospect enregistré avec succès.' }, { status: 200 });
+    
+      } catch (error: any) {
+        console.error('Erreur Supabase (création lead):', error);
+        return NextResponse.json({ error: 'Erreur interne du serveur.', details: error.message }, { status: 500 });
       }
     }
-
-    // 2. Retourner toujours un succès pour déclencher l'affichage du numéro
-    // 3. Créer une entrée dans la table `visits` pour conserver une trace côté client
-    try {
-      const insertData: any = {
-        property_id: propertyId,
-        scheduled_at: new Date().toISOString(),
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        visitor_count: 1,
-        client_notes: message || null,
-        agent_id: agentId || null
-      };
-      if (clientId) insertData.client_id = clientId;
-      const { error: visitError } = await supabase.from('visits').insert(insertData);
-      if (visitError) console.error('Erreur création visit:', visitError);
-    } catch (e) {
-      console.error('Erreur lors de l insertion dans visits:', e);
-    }
-
-    return NextResponse.json({ message: 'Votre demande de visite a été enregistrée avec succès.' }, { status: 200 });
-
-  } catch (error: any) {
-    console.error('Error in /api/visits:', error);
-    return NextResponse.json({ message: 'Une erreur est survenue. Veuillez réessayer.' }, { status: 500 });
-  }
-}

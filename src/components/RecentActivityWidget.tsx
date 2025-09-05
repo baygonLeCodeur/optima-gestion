@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bell, Home, Search, Calendar } from 'lucide-react';
+import { useIsClient } from '@/hooks/use-is-client';
 
 type Activity = {
   id: string;
@@ -16,6 +17,7 @@ type Activity = {
 };
 
 const RecentActivityWidget: React.FC = () => {
+  const isClient = useIsClient();
   const { user } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,7 +76,7 @@ const RecentActivityWidget: React.FC = () => {
         <CardTitle>Activité Récente</CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {!isClient || isLoading ? (
           <p>Chargement...</p>
         ) : activities.length > 0 ? (
           <ul className="space-y-4">

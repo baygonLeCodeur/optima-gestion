@@ -79,11 +79,13 @@ export default async function EditPropertyPage({ params }: EditPropertyPageProps
         redirect('/login');
     }
 
+    const { id } = params;
+
     const sb2 = supabase as unknown as SupabaseClient<Database>;
     const { data: property, error } = await sb2
         .from('properties')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', id)
         .eq('agent_id', user.id)
         .single();
 

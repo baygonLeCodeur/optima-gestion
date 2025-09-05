@@ -5,14 +5,16 @@ import { useEffect, useState } from 'react'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AgentCalendar } from '@/components/AgentCalendar';
+import { AgentVisitList } from '@/components/AgentVisitList'; // Importer le composant de liste
 import { AvailabilityManager } from '@/components/AvailabilityManager';
 import { Tables } from '@/types/supabase';
 import { updateAvailabilitiesAction } from './actions';
 
 // --- TYPES ---
+// Type aligné sur les composants AgentCalendar et AgentVisitList
 export type VisitWithDetails = Tables<'visits'> & {
-  properties: Pick<Tables<'properties'>, 'id' | 'title' | 'address'>;
-  users: Pick<Tables<'users'>, 'id' | 'full_name' | 'email' | 'phone_number'>;
+  properties: Pick<Tables<'properties'>, 'id' | 'title' | 'address'> | null;
+  clients: Pick<Tables<'users'>, 'id' | 'full_name' | 'email' | 'phone_number' | 'image'> | null;
 };
 type Availability = Tables<'agent_availabilities'>;
 
@@ -36,8 +38,18 @@ export default function AgentCalendarPage() {
     useEffect(() => {
         if (user) {
             const getAgentData = async () => {
-                const { data: visits, error: visitsError } = await supabase.from('visits').select(`*, properties ( id, title, address ), users!visits_client_id_fkey ( id, full_name, email, phone_number )`).eq('agent_id', user.id);
-                const { data: availabilities, error: availabilitiesError } = await supabase.from('agent_availabilities').select('*').eq('agent_id', user.id);
+                // On trie les visites par date, les plus récentes en premier
+                // On renomme la jointure "users" en "clients" pour correspondre au type
+                const { data: visits, error: visitsError } = await supabase
+                    .from('visits')
+                    .select(`*, properties ( id, title, address ), clients:users!visits_client_id_fkey ( id, full_name, email, phone_number, image )`)
+                    .eq('agent_id', user.id)
+                    .order('scheduled_at', { ascending: false });
+
+                const { data: availabilities, error: availabilitiesError } = await supabase
+                    .from('agent_availabilities')
+                    .select('*')
+                    .eq('agent_id', user.id);
                 
                 if (visitsError) console.error("Erreur (visites):", visitsError.message);
                 if (availabilitiesError) console.error("Erreur (disponibilités):", availabilitiesError.message);
@@ -57,8 +69,16 @@ export default function AgentCalendarPage() {
                     <TabsTrigger value="calendar">Calendrier des Visites</TabsTrigger>
                     <TabsTrigger value="availability">Gestion des Disponibilités</TabsTrigger>
                 </TabsList>
-                <TabsContent value="calendar" className="h-[75vh]">
-                    <AgentCalendar visits={visits} />
+                <TabsContent value="calendar" className="space-y-4">
+                    {/* On divise la vue en deux : Calendrier et Liste */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="h-[75vh]">
+                           <AgentCalendar visits={visits} availabilities={availabilities} />
+                        </div>
+                        <div className="h-[75vh] overflow-auto">
+                           <AgentVisitList title="Toutes les visites" visits={visits} />
+                        </div>
+                    </div>
                 </TabsContent>
                 <TabsContent value="availability">
                     <AvailabilityManager availabilities={availabilities} updateAction={updateAvailabilitiesAction} />

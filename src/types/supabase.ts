@@ -501,7 +501,7 @@ export type Database = {
           is_read: boolean | null
           message: string
           read_at: string | null
-          title: string
+          title: string | null
           type: string
           user_id: string
         }
@@ -512,7 +512,7 @@ export type Database = {
           is_read?: boolean | null
           message: string
           read_at?: string | null
-          title: string
+          title?: string | null
           type: string
           user_id: string
         }
@@ -523,7 +523,7 @@ export type Database = {
           is_read?: boolean | null
           message?: string
           read_at?: string | null
-          title?: string
+          title?: string | null
           type?: string
           user_id?: string
         }

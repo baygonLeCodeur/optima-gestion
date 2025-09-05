@@ -112,7 +112,7 @@ export function Hero() {
   };
   
   // Gestionnaire pour la soumission du formulaire
-  const handleSearch = async (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!location || !propertyType || !operation) {
@@ -120,38 +120,20 @@ export function Hero() {
       return;
     }
 
-    try {
-      // Récupérer les biens correspondant aux critères
-      const response = await fetch(
-        `/api/properties/search?location=${encodeURIComponent(location)}&type=${encodeURIComponent(propertyType)}&operation=${encodeURIComponent(operation)}`
-      );
-      
-      if (!response.ok) throw new Error("Failed to fetch search results");
-      
-      const searchResults = await response.json(); 
-      
-      // --- DÉBOGAGE : Ajout d'un console.log pour inspecter searchResults ---
-      console.log("Contenu de searchResults avant stringify:", searchResults);
-      // -------------------------------------------------------------------
-
-      // Trouver le nom du type de bien sélectionné
-      const selectedPropertyType = propertyTypes.find(type => type.id === propertyType);
-      const propertyTypeName = selectedPropertyType ? selectedPropertyType.name : propertyType;
-      
-      // Rediriger vers la page de recherche avec les résultats et le nom du type
-      const query = new URLSearchParams({
-        location: location,
-        type: propertyType, // ID du type
-        typeName: propertyTypeName, // NOUVEAU: Nom du type pour l'affichage
-        operation: operation,
-        results: JSON.stringify(searchResults) // <-- Assurez-vous que searchResults est bien le tableau des propriétés
-      });
-      
-      router.push(`/recherche?${query.toString()}`);
-      
-    } catch (error) {
-      console.error("Error performing search:", error);
-    }
+    // Trouver le nom du type de bien sélectionné pour l'affichage sur la page de résultats
+    const selectedPropertyType = propertyTypes.find(type => type.id === propertyType);
+    const propertyTypeName = selectedPropertyType ? selectedPropertyType.name : '';
+    
+    // Construire la requête avec seulement les paramètres de recherche, pas les résultats
+    const query = new URLSearchParams({
+      location: location,
+      type: propertyType,
+      typeName: propertyTypeName,
+      operation: operation,
+    });
+    
+    // Rediriger vers la page de recherche
+    router.push(`/recherche?${query.toString()}`);
   };
 
   // Déterminer si le bouton de recherche doit être activé

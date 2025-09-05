@@ -202,61 +202,47 @@ export default function SearchResultsPage() {
   };
 
   useEffect(() => {
-  // ...existing code... (fetchProperties logic remains)
-
     const fetchProperties = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        // Vérifier si nous avons des résultats pré-calculés du moteur de recherche avancé
-        const precomputedResults = searchParams.get('results');
-        
-        if (precomputedResults) {
-          // Si nous avons des résultats pré-calculés, les utiliser directement
-          try {
-            const parsedResults = JSON.parse(precomputedResults);
-            setProperties(parsedResults.map(mapPropertyData));
-            setLoading(false);
-            return;
-          } catch (parseError) {
-            console.error('Error parsing precomputed results:', parseError);
-            // Continuer avec la recherche normale si le parsing échoue
-          }
-        }
-
-        // Logique de recherche normale avec jointure pour récupérer le nom du type de bien
         const supabase = createClient();
         let query = supabase
           .from('properties')
           .select('*, property_types(name)')
           .eq('status', 'available');
         
+        // --- NOUVELLE LOGIQUE DE RECHERCHE DE LOCALISATION ---
         if (currentSearchCriteria.location) {
-          const location = currentSearchCriteria.location;
-          query = query.or(`city.ilike.%${location}%,address.ilike.%${location}%`);
+          const location = currentSearchCriteria.location as string;
+          if (location.includes('/')) {
+            const [city, address] = location.split('/');
+            query = query.ilike('city', `%${city.trim()}%`).ilike('address', `%${address.trim()}%`);
+          } else {
+            query = query.or(`city.ilike.%${location}%,address.ilike.%${location}%`);
+          }
         }
+        // --- FIN DE LA NOUVELLE LOGIQUE ---
+
         if (currentSearchCriteria.type) {
-           // Utiliser l'ID du type de bien pour le filtre
            query = query.eq('property_type_id', currentSearchCriteria.type);
         }
         
-        // Appliquer les filtres d'opération (MODIFIÉ pour gérer 'Vente')
         if (currentSearchCriteria.operation) {
           switch (currentSearchCriteria.operation) {
-            case 'À Vendre': // Terme exact
-              query = query.eq('is_for_sale', true).eq('is_for_rent', false);
+            case 'À Vendre':
+              query = query.eq('is_for_sale', true);
               break;
-            case 'À Louer': // Terme exact
-              query = query.eq('is_for_rent', true).eq('is_for_sale', false);
+            case 'À Louer':
+              query = query.eq('is_for_rent', true);
               break;
-            case 'Location-Vente': // Terme exact
+            case 'Location-Vente':
               query = query.eq('is_for_rent', true).eq('is_for_sale', true);
               break;
           }
         }
         
-        // Appliquer les filtres
         query = query.gte('price', filters.price.min).lte('price', filters.price.max);
         if (filters.rooms !== 'any') query = query.gte('number_of_rooms', parseInt(filters.rooms));
         if (filters.bathrooms !== 'any') query = query.gte('number_of_bathrooms', parseInt(filters.bathrooms));

@@ -166,10 +166,10 @@ export default function PropertyForm({ propertyToEdit, onFormSubmit }: PropertyF
         
         if (error) {
           console.error('❌ Erreur lors de la récupération des types de biens:', error);
-          toast({ 
-            variant: 'destructive', 
-            title: 'Erreur', 
-            description: `Impossible de charger les types de biens: ${error.message}` 
+          toast({
+            variant: 'destructive',
+            title: 'Erreur',
+            description: `Impossible de charger les types de biens: ${error.message}`
           });
           return;
         }
@@ -179,18 +179,18 @@ export default function PropertyForm({ propertyToEdit, onFormSubmit }: PropertyF
           setPropertyTypes(data);
         } else {
           console.warn('⚠️ Aucun type de bien actif trouvé');
-          toast({ 
-            variant: 'destructive', 
-            title: 'Attention', 
-            description: 'Aucun type de bien actif trouvé dans la base de données' 
+          toast({
+            variant: 'destructive',
+            title: 'Attention',
+            description: 'Aucun type de bien actif trouvé dans la base de données'
           });
         }
       } catch (err) {
         console.error('❌ Erreur inattendue:', err);
-        toast({ 
-          variant: 'destructive', 
-          title: 'Erreur', 
-          description: 'Erreur inattendue lors du chargement des types de biens' 
+        toast({
+          variant: 'destructive',
+          title: 'Erreur',
+          description: 'Erreur inattendue lors du chargement des types de biens'
         });
       }
     };
@@ -365,9 +365,16 @@ export default function PropertyForm({ propertyToEdit, onFormSubmit }: PropertyF
               <AccordionItem value="item-3">
                 <AccordionTrigger><h3 className="text-lg font-semibold">Visite Virtuelle (Optionnel)</h3></AccordionTrigger>
                 <AccordionContent className="pt-4">
-                  <FormField control={control} name="virtual_tour_config" render={({ field }) => (
-                    <VirtualTourEditor initialConfig={field.value as Json} onChange={field.onChange} baseImagePath={`/properties/${propertyId}/panoramas`}/>
-                  )}/>
+                  <FormField control={control} name="virtual_tour_config" render={({ field }) => {
+                    const { data: { publicUrl } } = supabase.storage.from('properties-images').getPublicUrl(`${propertyId}/panoramas`);
+                    return (
+                      <VirtualTourEditor 
+                        initialConfig={field.value as Json} 
+                        onChange={field.onChange} 
+                        baseImagePath={publicUrl}
+                      />
+                    );
+                  }}/>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

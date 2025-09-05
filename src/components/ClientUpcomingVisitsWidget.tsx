@@ -5,6 +5,7 @@ import { Tables } from '@/types/supabase';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, ArrowRight } from 'lucide-react';
+import { useIsClient } from '@/hooks/use-is-client';
 
 // Define the shape of a raw property and visit from the database
 type RawProperty = Tables<'properties'>;
@@ -21,7 +22,7 @@ interface ClientUpcomingVisitsWidgetProps {
 
 // Use a named export with the new specific name
 export const ClientUpcomingVisitsWidget = ({ visits, isLoading, onSeeAll }: ClientUpcomingVisitsWidgetProps) => {
-
+  const isClient = useIsClient();
   // Filter for only upcoming visits with a 'confirmed' or 'pending' status
   const upcomingVisits = visits
     .filter(visit => {
@@ -38,7 +39,7 @@ export const ClientUpcomingVisitsWidget = ({ visits, isLoading, onSeeAll }: Clie
         <CardTitle>Prochaines Visites</CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {!isClient || isLoading ? (
             <p>Chargement des visites...</p>
         ) : upcomingVisits.length > 0 ? (
           <ul className="space-y-4">
