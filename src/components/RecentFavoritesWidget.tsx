@@ -9,7 +9,13 @@ import { PropertyCardType, FavoriteProperty, RawProperty } from '@/types';
 import type { PropertyWithType } from '@/types/custom';
 import { getBedrooms as utilGetBedrooms, getBathrooms as utilGetBathrooms, normalizeLatLng } from '@/lib/property-utils';
 
-const mapPropertyData = (property: RawProperty): PropertyCardType => {
+const mapPropertyData = (property: RawProperty | null): PropertyCardType | null => {
+    // Vérification de nullité pour éviter l'erreur
+    if (!property) {
+        console.warn('Property is null in RecentFavoritesWidget, skipping mapping');
+        return null;
+    }
+    
     const status = property.is_for_sale ? 'À Vendre' : 'À Louer';
     const imageUrl = (property.image_paths && property.image_paths.length > 0) ? property.image_paths[0] : 'https://placehold.co/600x400.png';
   const getBedrooms = (p: RawProperty | PropertyWithType) => utilGetBedrooms(p as unknown as RawProperty);
@@ -58,9 +64,13 @@ export const RecentFavoritesWidget = ({ favorites, isLoading, onSeeAll }: Recent
           <p>Chargement...</p>
         ) : recentFavorites.length > 0 ? (
           <div className="space-y-4">
-            {recentFavorites.map((fav) => (
-              <PropertyCard key={fav.id} property={mapPropertyData(fav.properties as unknown as PropertyWithType)} />
-            ))}
+            {recentFavorites
+              .map((fav) => mapPropertyData(fav.properties as unknown as PropertyWithType))
+              .filter((property): property is PropertyCardType => property !== null)
+              .map((property) => (
+                <PropertyCard key={property.id} property={property} />
+              ))
+            }
             <Button variant="link" className="p-0 mt-4" onClick={onSeeAll}>
                 Voir tous les favoris
             </Button>

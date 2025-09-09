@@ -38,7 +38,13 @@ const SearchResultsMap = dynamic(
 );
 
 // --- Helper Function ---
-const mapPropertyData = (property: Tables<'properties'>): PropertyCardType => {
+const mapPropertyData = (property: Tables<'properties'> | null): PropertyCardType | null => {
+    // Vérification de nullité pour éviter l'erreur
+    if (!property) {
+        console.warn('Property is null, skipping mapping');
+        return null;
+    }
+    
     const status = property.is_for_sale ? 'À Vendre' : 'À Louer';
     const imageUrl = (property.image_paths && property.image_paths.length > 0) ? property.image_paths[0] : 'https://placehold.co/600x400.png';
     return {
@@ -67,7 +73,11 @@ const FavoritesTabContent: React.FC<{ isLoading: boolean; favorites: FavoritePro
       {error && <p className="text-red-500">{error}</p>}
       {!isLoading && !error && favorites.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {favorites.map((fav) => <PropertyCard key={fav.id} property={mapPropertyData(fav.properties)} />)}
+          {favorites
+            .map((fav) => mapPropertyData(fav.properties))
+            .filter((property): property is PropertyCardType => property !== null)
+            .map((property) => <PropertyCard key={property.id} property={property} />)
+          }
         </div>
       )}
        {!isLoading && !error && favorites.length === 0 && <p>Vous n'avez aucune propriété favorite pour le moment.</p>}
@@ -246,7 +256,9 @@ export default function DashboardPage() {
 
   // Calculer les propriétés pour la carte de façon sécurisée
   const allProperties = favorites && Array.isArray(favorites) 
-    ? favorites.map(fav => mapPropertyData(fav.properties)).filter(Boolean)
+    ? favorites
+        .map(fav => mapPropertyData(fav.properties))
+        .filter((property): property is PropertyCardType => property !== null)
     : [];
 
   return (
