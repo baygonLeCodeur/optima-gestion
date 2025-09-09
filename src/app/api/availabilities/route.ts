@@ -1,5 +1,5 @@
      // src/app/api/availabilities/route.ts
-    import { createClient } from '@/lib/supabase/server';
+    import { createSupabaseServerClient } from '@/lib/supabase/server';
     import { NextRequest, NextResponse } from 'next/server';
     import { getDay, parse, addMinutes, isAfter, areIntervalsOverlapping } from 'date-fns';
     
@@ -17,7 +17,7 @@
     }
     
     // --- CORRECTION ICI ---
-    const supabase = await createClient();
+    const supabase = await createSupabaseServerClient();
     
     try {
         // 1. Récupérer les disponibilités hebdomadaires de l'agent

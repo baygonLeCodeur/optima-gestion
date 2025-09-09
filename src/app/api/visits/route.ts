@@ -1,7 +1,7 @@
  // src/app/api/visits/route.ts
  import { NextResponse } from 'next/server';
  import { supabaseAdmin } from '@/lib/supabase/admin';
- import { createClient } from '@/lib/supabase/server';
+ import { createSupabaseServerClient } from '@/lib/supabase/server';
  
  export async function POST(request: Request) {
    const supabase = supabaseAdmin;
@@ -17,7 +17,7 @@
         }
     
         // On vérifie que l'utilisateur qui fait la requête est bien celui concerné
-        const supabaseServer = await createClient(); // <-- CORRECTION ICI
+        const supabaseServer = await createSupabaseServerClient(); // <-- CORRECTION ICI
         const { data: { user } } = await supabaseServer.auth.getUser();
         if (!user || user.id !== client_id) {
             return NextResponse.json({ error: 'Action non autorisée.' }, { status: 403 });

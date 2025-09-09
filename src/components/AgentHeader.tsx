@@ -1,9 +1,9 @@
-// src/components/header.tsx
+// src/components/AgentHeader.tsx
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu, Home } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
 import { useMobile } from '@/hooks/use-mobile';
@@ -13,15 +13,15 @@ import { Icons } from './icons';
 import { NotificationBell } from './NotificationBell';
 import { logout } from '@/app/auth/actions';
 
-const mainNavLinks = [
-  { href: '/', label: 'Accueil' },
-  { href: '/acheter', label: 'Acheter' },
-  { href: '/louer', label: 'Louer' },
-  { href: '/location-vente', label: 'Location-Vente' },
-  { href: '/a-propos', label: 'Qui sommes-nous ?' },
+const agentNavLinks = [
+  { href: '/agent', label: 'Tableau de bord' },
+  { href: '/agent/biens', label: 'Mes Biens' },
+  { href: '/agent/clients', label: 'Mes Clients' },
+  { href: '/agent/rendez-vous', label: 'Rendez-vous' },
+  { href: '/agent/rapports', label: 'Rapports' },
 ];
 
-export default function Header() {
+export default function AgentHeader() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const isMobile = useMobile();
@@ -47,10 +47,15 @@ export default function Header() {
       return (
         <div className="flex items-center gap-2">
           <NotificationBell />
-          <Button variant="ghost" onClick={handleContactClick}>Contact</Button>
           <Button variant="ghost" asChild>
-            <Link href="/dashboard">Mon Espace</Link>
+            <Link href="/">
+              <Home className="h-4 w-4 mr-2" />
+              Accueil
+            </Link>
           </Button>
+          <span className="text-sm text-gray-600 hidden md:block">
+            Agent: {user.email}
+          </span>
           <form action={logout}>
             <Button variant="outline" size="icon" type="submit" aria-label="Déconnexion">
               <LogOut className="h-4 w-4" />
@@ -77,9 +82,9 @@ export default function Header() {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center justify-between">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
+          <Link href="/agent" className="mr-6 flex items-center space-x-2">
             <Icons.logo className="h-6 w-6" />
-            <span className="font-bold">OPTIMA GESTION</span>
+            <span className="font-bold text-primary">ESPACE AGENT</span>
           </Link>
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -89,7 +94,7 @@ export default function Header() {
             </SheetTrigger>
             <SheetContent side="right">
               <nav className="flex flex-col gap-4 mt-8">
-                {mainNavLinks.map((link) => (
+                {agentNavLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
@@ -116,12 +121,12 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
-        <Link href="/" className="mr-6 flex items-center space-x-2">
+        <Link href="/agent" className="mr-6 flex items-center space-x-2">
           <Icons.logo className="h-8 w-8" />
-          <span className="font-bold text-lg">OPTIMA GESTION</span>
+          <span className="font-bold text-lg text-primary">ESPACE AGENT</span>
         </Link>
         <nav className="flex items-center gap-6 text-sm">
-          {mainNavLinks.map((link) => (
+          {agentNavLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}

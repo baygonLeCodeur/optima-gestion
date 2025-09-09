@@ -73,6 +73,58 @@ export type Database = {
           },
         ]
       }
+      ads_activating: {
+        Row: {
+          activated_at: string | null
+          agent_id: string
+          amount_deducted: number
+          currency: string
+          expires_at: string | null
+          id: string
+          property_id: string
+        }
+        Insert: {
+          activated_at?: string | null
+          agent_id: string
+          amount_deducted: number
+          currency?: string
+          expires_at?: string | null
+          id?: string
+          property_id: string
+        }
+        Update: {
+          activated_at?: string | null
+          agent_id?: string
+          amount_deducted?: number
+          currency?: string
+          expires_at?: string | null
+          id?: string
+          property_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ads_activating_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ads_activating_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ads_activating_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "view_properties_with_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_availabilities: {
         Row: {
           agent_id: string
@@ -161,6 +213,41 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_wallets: {
+        Row: {
+          agent_id: string
+          balance: number
+          created_at: string | null
+          currency: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          agent_id: string
+          balance?: number
+          created_at?: string | null
+          currency?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          agent_id?: string
+          balance?: number
+          created_at?: string | null
+          currency?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_wallets_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -409,6 +496,66 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "view_properties_with_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      funds_deposit: {
+        Row: {
+          agent_id: string
+          amount: number
+          cinetpay_payment_token: string | null
+          cinetpay_transaction_id: string | null
+          created_at: string | null
+          currency: string
+          id: string
+          payment_date: string | null
+          payment_method: string
+          status: string
+          wallet_id: string
+          webhook_data: Json | null
+        }
+        Insert: {
+          agent_id: string
+          amount: number
+          cinetpay_payment_token?: string | null
+          cinetpay_transaction_id?: string | null
+          created_at?: string | null
+          currency?: string
+          id?: string
+          payment_date?: string | null
+          payment_method: string
+          status?: string
+          wallet_id: string
+          webhook_data?: Json | null
+        }
+        Update: {
+          agent_id?: string
+          amount?: number
+          cinetpay_payment_token?: string | null
+          cinetpay_transaction_id?: string | null
+          created_at?: string | null
+          currency?: string
+          id?: string
+          payment_date?: string | null
+          payment_method?: string
+          status?: string
+          wallet_id?: string
+          webhook_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funds_deposit_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funds_deposit_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "agent_wallets"
             referencedColumns: ["id"]
           },
         ]

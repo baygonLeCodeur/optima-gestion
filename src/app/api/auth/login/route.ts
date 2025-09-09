@@ -1,7 +1,7 @@
 // src/app/api/auth/login/route.ts
 import { NextResponse } from 'next/server';
 // On importe la fonction pour créer un client côté SERVEUR
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function POST(req: Request) {
   const { email, password } = await req.json();
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
   // On crée une instance du client Supabase pour cette requête serveur.
   // Il sait comment gérer les cookies grâce à la configuration que nous avons faite.
-  const supabase = await createClient();
+  const supabase = await createSupabaseServerClient();
 
   // On connecte l'utilisateur. Supabase va automatiquement définir ses propres cookies
   // (contenant le JWT) dans la réponse.

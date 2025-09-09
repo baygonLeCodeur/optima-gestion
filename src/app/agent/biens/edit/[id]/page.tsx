@@ -79,7 +79,7 @@ export default async function EditPropertyPage({ params }: EditPropertyPageProps
         redirect('/login');
     }
 
-    const { id } = params;
+    const id = (await params).id;
 
     const sb2 = supabase as unknown as SupabaseClient<Database>;
     const { data: property, error } = await sb2

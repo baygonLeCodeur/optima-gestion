@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MoreHorizontal, Eye, Edit, Trash2, Loader2, ListFilter, ArrowDownUp } from 'lucide-react';
+import { MoreHorizontal, Eye, Edit, Trash2, Loader2, ListFilter, ArrowDownUp, CheckCircle, Building } from 'lucide-react';
 
 import {
   AlertDialog,
@@ -40,7 +40,8 @@ import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 
 import { type AgentProperty } from '@/app/agent/biens/page';
-import { deletePropertyAction } from '@/app/agent/biens/actions';
+// On importe les DEUX actions
+import { deletePropertyAction, updatePropertyStatusAction } from '@/app/agent/biens/actions';
 
 type AgentPropertyListProps = {
   properties: AgentProperty[];
@@ -68,6 +69,7 @@ export default function AgentPropertyList({ properties }: AgentPropertyListProps
     const searchParams = useSearchParams();
 
     const [isDeleting, setIsDeleting] = React.useState(false);
+    const [isUpdatingStatus, setIsUpdatingStatus] = React.useState<string | null>(null); // Pour suivre l'ID du bien en cours de MàJ
     const [propertyToDelete, setPropertyToDelete] = React.useState<AgentProperty | null>(null);
 
     const handleFilterOrSort = (key: 'status' | 'sortBy' | 'order', value: string | null) => {
@@ -79,7 +81,6 @@ export default function AgentPropertyList({ properties }: AgentPropertyListProps
             current.set(key, value);
         }
 
-        // Si on change le tri, on ne garde pas l'ordre
         if (key === 'sortBy') {
             current.delete('order');
         }
@@ -89,6 +90,23 @@ export default function AgentPropertyList({ properties }: AgentPropertyListProps
         router.push(`${pathname}${query}`);
     };
 
+    const handleUpdateStatus = async (property: AgentProperty, status: 'vendu' | 'loué') => {
+        setIsUpdatingStatus(property.id);
+        try {
+            const result = await updatePropertyStatusAction(property.id, status);
+            if (result.success) {
+                toast({ title: 'Succès', description: `Le statut du bien "${property.title}" a été mis à jour.` });
+                router.refresh(); // Rafraîchit la page pour voir le changement
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Erreur', description: error.message || 'Une erreur est survenue.' });
+        } finally {
+            setIsUpdatingStatus(null);
+        }
+    };
+
     const handleDelete = async () => {
         if (!propertyToDelete) return;
         setIsDeleting(true);
@@ -96,7 +114,6 @@ export default function AgentPropertyList({ properties }: AgentPropertyListProps
             const result = await deletePropertyAction(propertyToDelete.id);
             if (result.success) {
                 toast({ title: 'Succès', description: `Le bien "${propertyToDelete.title}" a été supprimé.` });
-                // Le rafraîchissement est géré par la navigation
             } else {
                 throw new Error(result.error);
             }
@@ -105,14 +122,13 @@ export default function AgentPropertyList({ properties }: AgentPropertyListProps
         } finally {
             setIsDeleting(false);
             setPropertyToDelete(null);
-            router.refresh(); // On rafraîchit pour être sûr d'avoir les dernières données
+            router.refresh();
         }
     };
 
   return (
     <>
       <div className="flex justify-end space-x-2 mb-4">
-        {/* Filtre par Statut */}
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline"><ListFilter className="mr-2 h-4 w-4" />Filtrer par statut</Button>
@@ -131,7 +147,6 @@ export default function AgentPropertyList({ properties }: AgentPropertyListProps
             </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Tri */}
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline"><ArrowDownUp className="mr-2 h-4 w-4" />Trier par</Button>
@@ -187,18 +202,36 @@ export default function AgentPropertyList({ properties }: AgentPropertyListProps
                 <TableCell className="text-right">{formatNumber(property.view_count || 0)}</TableCell>
                 <TableCell className="text-right">{formatNumber(property.contacts)}</TableCell>
                 <TableCell className="text-center">
+                  {isUpdatingStatus === property.id ? (
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                  ) : (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Ouvrir menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuItem asChild><Link href={`/biens/${property.id}`}><Eye className="mr-2 h-4 w-4" />Voir</Link></DropdownMenuItem>
                       <DropdownMenuItem asChild><Link href={`/agent/biens/edit/${property.id}`}><Edit className="mr-2 h-4 w-4" />Modifier</Link></DropdownMenuItem>
+                      
+                      {/* --- NOUVELLES OPTIONS CONDITIONNELLES --- */}
+                      {property.status === 'disponible' && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onSelect={() => handleUpdateStatus(property, 'vendu')}>
+                            <CheckCircle className="mr-2 h-4 w-4" />Marquer comme vendu
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleUpdateStatus(property, 'loué')}>
+                            <Building className="mr-2 h-4 w-4" />Marquer comme loué
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-red-600" onSelect={(e) => { e.preventDefault(); setPropertyToDelete(property); }}>
                         <Trash2 className="mr-2 h-4 w-4" />Supprimer
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

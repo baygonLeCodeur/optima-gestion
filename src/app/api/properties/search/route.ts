@@ -1,5 +1,5 @@
 // src/app/api/properties/search/route.ts
-import { createClient as createServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient as createServerClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { Tables } from '@/types/supabase';
 

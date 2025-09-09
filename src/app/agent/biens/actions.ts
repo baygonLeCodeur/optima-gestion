@@ -2,7 +2,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { Database } from '@/types/supabase';
+import { Database, Tables } from '@/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -27,6 +27,46 @@ export async function deletePropertyAction(propertyId: string): Promise<{ succes
     revalidatePath('/agent/biens');
     return { success: true };
 }
+
+// --- NOUVELLE ACTION ---
+export async function updatePropertyStatusAction(
+  propertyId: string,
+  status: 'vendu' | 'loué'
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Authentification requise.' };
+  }
+
+  // 1. Préparer la mise à jour
+  // On s'assure que si un bien est vendu ou loué, il n'est plus à vendre,
+  // ni à louer, et n'est plus mis en avant.
+  const dataToUpdate: Partial<Tables<'properties'>> = {
+    status: status === 'vendu' ? 'sold' : 'rented',
+    is_for_sale: false,
+    is_for_rent: false,
+    is_featured: false,
+  };
+
+  // 2. Exécuter la mise à jour
+  const { error } = await supabase
+    .from('properties')
+    .update(dataToUpdate)
+    .eq('id', propertyId)
+    .eq('agent_id', user.id); // Sécurité : l'agent ne peut modifier que ses propres biens
+
+  if (error) {
+    console.error('Erreur de mise à jour du statut:', error);
+    return { success: false, error: 'La mise à jour du statut a échoué.' };
+  }
+
+  // 3. Rafraîchir les données côté client
+  revalidatePath('/agent/biens');
+  return { success: true };
+}
+
 
 // --- Fonction de chargement des propriétés (entièrement réécrite pour utiliser la RPC) ---
 export async function loadAgentProperties(filter: { 

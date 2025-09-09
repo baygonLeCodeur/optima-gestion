@@ -29,11 +29,17 @@ export const propertySchema = z.object({
   address: z.string().min(1, "L'adresse est requise"),
   city: z.string().min(1, 'La ville est requise'),
   country: z.string().min(1, 'Le pays est requis'),
-  price: z.preprocess((val) => (val === "" ? null : val), z.coerce.number({ invalid_type_error: "Le prix doit être un nombre."}).optional().nullable()),
-  area_sqm: z.preprocess((val) => (val === "" ? null : val), z.coerce.number({ invalid_type_error: "La superficie doit être un nombre."}).positive('La superficie doit être positive').optional().nullable()),
+  price: z.preprocess((val) => (val === "" ? null : val), z.coerce.number({ invalid_type_error: "Le prix doit être un nombre."}).positive('Le prix doit être un montant positif').nullable()),
+  area_sqm: z.preprocess((val) => (val === "" ? undefined : val), z.coerce.number({ required_error: "La superficie est requise.", invalid_type_error: "La superficie doit être un nombre."}).positive('La superficie doit être positive')),
   number_of_rooms: z.preprocess((val) => (val === "" ? null : val), z.coerce.number({ invalid_type_error: "Le nombre de pièces doit être un nombre."}).int('Le nombre de pièces doit être un entier').optional().nullable()),
   number_of_bathrooms: z.preprocess((val) => (val === "" ? null : val), z.coerce.number({ invalid_type_error: "Le nombre de salles de bain doit être un nombre."}).int('Le nombre de salles de bain doit être un entier').optional().nullable()),
+  number_of_parkings: z.preprocess((val) => (val === "" ? null : val), z.coerce.number({ invalid_type_error: "Le nombre de parkings doit être un nombre."}).int('Le nombre de parkings doit être un entier').optional().nullable()),
+  floor_number: z.preprocess((val) => (val === "" ? null : val), z.coerce.number({ invalid_type_error: "Le numéro d'étage doit être un nombre."}).int("Le numéro d'étage doit être un entier").optional().nullable()),
+  total_floors: z.preprocess((val) => (val === "" ? null : val), z.coerce.number({ invalid_type_error: "Le nombre total d'étages doit être un nombre."}).int("Le nombre total d'étages doit être un entier").optional().nullable()),
   year_built: z.preprocess((val) => (val === "" ? null : val), z.coerce.number({ invalid_type_error: "L'année doit être un nombre."}).int('L\'année doit être un nombre entier').optional().nullable()),
+  has_garden: z.boolean().default(false),
+  has_pool: z.boolean().default(false),
+  has_elevator: z.boolean().default(false),
   status: z.enum(['available', 'rented', 'sold', 'under_contract', 'archived']).default('available'),
   is_for_sale: z.boolean().default(false),
   is_for_rent: z.boolean().default(false),
@@ -51,21 +57,7 @@ export const propertySchema = z.object({
           });
       }
     }
-    if (data.price == null || data.price <= 0) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['price'],
-            message: 'Le prix est requis et doit être un montant positif.',
-        });
-    }
-    if (data.is_for_rent && data.status === 'available') {
-        if (data.security_deposit == null) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['security_deposit'], message: 'La caution est requise.' });
-        }
-        if (data.advance_rent == null) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['advance_rent'], message: 'L\'avance sur loyer est requise.' });
-        }
-    }
+    // La validation pour security_deposit et advance_rent est maintenant gérée dynamiquement
 });
 
 const statusTranslations: { [key: string]: string } = {
@@ -76,24 +68,53 @@ const statusTranslations: { [key: string]: string } = {
   archived: 'Archivé'
 };
 
-const getVisibleFields = (typeName: string | undefined): string[] => {
-    if (!typeName) return [];
-    const name = typeName.toLowerCase();
-    const baseFields = ['title', 'description', 'address', 'city', 'country', 'price'];
-    const residentialTypes = ['studio', 'appartement 2 pièces', 'appartement 3 pièces', 'appartement 4 pièces', 'appartement 5 pièces et plus', 'penthouse', 'duplex', 'triplex', 'villa basse', 'villa duplex', 'maison de ville', 'immeuble', 'chambre'];
-    const commercialTypes = ['bureau', 'magasin', 'boutique', 'local commercial', 'fonds de commerce'];
-    const industrialTypes = ['entrepôt', 'hangar', 'local industriel'];
-    const landTypes = ['terrain nu', 'terrain agricole', 'terrain industriel', 'lotissement'];
-    const parkingTypes = ['parking', 'garage / box'];
-    const residentialKit = ['area_sqm', 'number_of_rooms', 'number_of_bathrooms', 'year_built'];
-    const commercialKit = ['area_sqm', 'number_of_rooms', 'year_built'];
-    const industrialAndLandKit = ['area_sqm'];
-    if (residentialTypes.includes(name)) return [...baseFields, ...residentialKit];
-    if (commercialTypes.includes(name)) return [...baseFields, ...commercialKit];
-    if (industrialTypes.includes(name) || landTypes.includes(name)) return [...baseFields, ...industrialAndLandKit];
-    if (parkingTypes.includes(name)) return baseFields;
-    return baseFields;
+// Logique d'affichage des champs conditionnels basée sur pageWeb2.html
+const conditionalFieldsByType: Record<string, string[]> = {
+    'Appartement 2 pièces': ['floor_number', 'has_elevator', 'number_of_parkings'],
+    'Appartement 3 pièces': ['floor_number', 'has_elevator', 'number_of_parkings'],
+    'Appartement 4 pièces': ['floor_number', 'has_elevator', 'number_of_parkings'],
+    'Appartement 5 pièces et plus': ['floor_number', 'has_elevator', 'number_of_parkings'],
+    'Maison': ['has_garden', 'number_of_rooms', 'number_of_parkings'],
+    'Villa': ['has_pool', 'has_garden', 'number_of_parkings', 'number_of_rooms'],
+    'Studio': ['floor_number', 'has_elevator'],
+    'Résidence': ['has_elevator', 'number_of_parkings', 'floor_number'],
+    'Duplex': ['has_pool', 'number_of_rooms', 'has_elevator', 'number_of_parkings', 'floor_number', 'total_floors'],
+    'Triplex': ['has_pool', 'number_of_rooms', 'has_elevator', 'number_of_parkings', 'floor_number', 'total_floors'],
+    'Villa basse': ['has_pool', 'has_garden', 'number_of_rooms', 'number_of_parkings'],
+    'Villa Duplex': ['has_pool', 'has_garden', 'number_of_rooms', 'number_of_parkings'],
+    'Maison de ville': ['number_of_rooms', 'number_of_parkings', 'has_garden'],
+    'Chambre': ['floor_number', 'number_of_bathrooms'],
+    'Local commercial': ['floor_number', 'number_of_parkings', 'has_elevator'],
+    'Penthouse': ['has_pool', 'total_floors', 'number_of_parkings'],
+    'Bureau': ['has_elevator', 'floor_number', 'number_of_parkings', 'total_floors'],
+    'Magasin': ['floor_number', 'number_of_parkings', 'has_elevator'],
+    'Boutique': ['floor_number', 'number_of_parkings', 'has_elevator'],
+    'Fonds de commerce': ['floor_number', 'number_of_parkings', 'has_elevator'],
+    'Entrepôt': ['floor_number', 'number_of_parkings', 'has_elevator'],
+    'Terrain nu': [],
+    'Terrain agricole': [],
+    // Fallback pour les types génériques de la DB
+    'Appartement': ['floor_number', 'has_elevator', 'number_of_parkings', 'number_of_rooms', 'number_of_bathrooms'],
+    'Terrain': [],
 };
+
+const getConditionalFieldsForType = (typeName: string | undefined): string[] => {
+    if (!typeName) return [];
+    // Recherche exacte d'abord
+    if (conditionalFieldsByType.hasOwnProperty(typeName)) {
+        return conditionalFieldsByType[typeName];
+    }
+    // Logique de fallback pour les types comme "Appartement"
+    const lowerTypeName = typeName.toLowerCase();
+    if (lowerTypeName.startsWith('appartement')) {
+        return conditionalFieldsByType['Appartement'];
+    }
+    if (lowerTypeName.includes('terrain')) {
+        return conditionalFieldsByType['Terrain'];
+    }
+    return [];
+};
+
 
 interface PropertyFormProps {
     propertyToEdit?: Tables<'properties'>;
@@ -122,8 +143,14 @@ export default function PropertyForm({ propertyToEdit, onFormSubmit }: PropertyF
       area_sqm: propertyToEdit?.area_sqm || undefined,
       number_of_rooms: propertyToEdit?.number_of_rooms || undefined,
       number_of_bathrooms: propertyToEdit?.number_of_bathrooms || undefined,
+      number_of_parkings: propertyToEdit?.number_of_parkings || undefined,
+      floor_number: propertyToEdit?.floor_number || undefined,
+      total_floors: propertyToEdit?.total_floors || undefined,
       year_built: propertyToEdit?.year_built || undefined,
-  status: (propertyToEdit?.status ?? 'available') as z.infer<typeof propertySchema>['status'],
+      has_garden: propertyToEdit?.has_garden ?? false,
+      has_pool: propertyToEdit?.has_pool ?? false,
+      has_elevator: propertyToEdit?.has_elevator ?? false,
+      status: (propertyToEdit?.status ?? 'available') as z.infer<typeof propertySchema>['status'],
       is_for_sale: propertyToEdit?.is_for_sale ?? false,
       is_for_rent: propertyToEdit?.is_for_rent ?? false,
       is_featured: propertyToEdit?.is_featured ?? false,
@@ -133,68 +160,72 @@ export default function PropertyForm({ propertyToEdit, onFormSubmit }: PropertyF
     },
   });
 
-  const { control, setValue } = form;
-  const watchedStatus = useWatch({ control, name: 'status' });
+  const { control, setValue, trigger } = form;
   const watchedPropertyTypeId = useWatch({ control, name: 'property_type_id' });
   const watchedIsForRent = useWatch({ control, name: 'is_for_rent' });
   const watchedIsForSale = useWatch({ control, name: 'is_for_sale' });
 
-  const selectedPropertyTypeName = React.useMemo(() => {
-    return propertyTypes.find(pt => pt.id === watchedPropertyTypeId)?.name;
+  const selectedPropertyType = React.useMemo(() => {
+    return propertyTypes.find(pt => pt.id === watchedPropertyTypeId);
   }, [watchedPropertyTypeId, propertyTypes]);
 
-  const visibleFields = getVisibleFields(selectedPropertyTypeName);
+  const conditionalFields = getConditionalFieldsForType(selectedPropertyType?.name);
 
-  const priceLabel = React.useMemo(() => {
-    if (watchedIsForRent) return "Loyer Mensuel (FCFA)";
-    if (watchedIsForSale) return "Prix de vente (FCFA)";
-    return "Prix (FCFA)";
-  }, [watchedIsForRent, watchedIsForSale]);
+  const isTitleLocked = selectedPropertyType?.name?.toLowerCase().startsWith('appartement') ?? false;
 
   React.useEffect(() => {
-    if (watchedStatus !== 'available') {
-        setValue('is_for_sale', false, { shouldValidate: true });
-        setValue('is_for_rent', false, { shouldValidate: true });
+    if (selectedPropertyType?.name) {
+        if (isTitleLocked) {
+            setValue('title', selectedPropertyType.name, { shouldValidate: true });
+        } else if (form.getValues('title') === '' || propertyTypes.some(pt => pt.name === form.getValues('title'))) {
+            // Effacer le titre si l'utilisateur change pour un type non-appartement
+            // et que le titre était auto-rempli
+            setValue('title', '', { shouldValidate: true });
+        }
     }
-  }, [watchedStatus, setValue]);
+  }, [isTitleLocked, selectedPropertyType?.name, setValue, form, propertyTypes]);
+
+  const { priceLabel, showRentalFields } = React.useMemo(() => {
+    let label = 'Prix';
+    let showFields = false;
+
+    if (watchedIsForRent) {
+        if (selectedPropertyType?.name === 'Résidence') {
+            label = 'Loyer journalier';
+            showFields = false;
+        } else {
+            label = 'Loyer Mensuel';
+            showFields = true;
+        }
+    } else if (watchedIsForSale) {
+        label = 'Prix de vente';
+        showFields = false;
+    }
+    return { priceLabel: label, showRentalFields: showFields };
+  }, [watchedIsForRent, watchedIsForSale, selectedPropertyType?.name]);
+
+  React.useEffect(() => {
+    // Valider les champs de location lorsque leur visibilité change
+    if (showRentalFields) {
+        trigger(['security_deposit', 'advance_rent']);
+    }
+  }, [showRentalFields, trigger]);
+
 
   React.useEffect(() => {
     const fetchPropertyTypes = async () => {
       try {
-        console.log('🔍 Récupération des types de biens...');
         const { data, error } = await supabase.from('property_types').select('*').eq('is_active', true);
-        
-        if (error) {
-          console.error('❌ Erreur lors de la récupération des types de biens:', error);
-          toast({
-            variant: 'destructive',
-            title: 'Erreur',
-            description: `Impossible de charger les types de biens: ${error.message}`
-          });
-          return;
-        }
-        
-        console.log('✅ Types de biens récupérés:', data);
-        if (data && data.length > 0) {
-          setPropertyTypes(data);
-        } else {
-          console.warn('⚠️ Aucun type de bien actif trouvé');
-          toast({
-            variant: 'destructive',
-            title: 'Attention',
-            description: 'Aucun type de bien actif trouvé dans la base de données'
-          });
-        }
-      } catch (err) {
-        console.error('❌ Erreur inattendue:', err);
+        if (error) throw error;
+        setPropertyTypes(data || []);
+      } catch (error: any) {
         toast({
           variant: 'destructive',
           title: 'Erreur',
-          description: 'Erreur inattendue lors du chargement des types de biens'
+          description: `Impossible de charger les types de biens: ${error.message}`
         });
       }
     };
-    
     fetchPropertyTypes();
   }, [supabase, toast]);
 
@@ -227,78 +258,131 @@ export default function PropertyForm({ propertyToEdit, onFormSubmit }: PropertyF
   
   const renderValue = (value: any) => value ?? '';
 
-  const renderField = (fieldName: string) => {
-    if (!visibleFields.includes(fieldName)) return null;
-    if (fieldName === 'price') {
-      return (
-        <FormField control={control} name="price" render={({ field }) => (
-          <FormItem>
-            <FormLabel>{priceLabel}</FormLabel>
-            <FormControl><Input type="number" {...field} value={renderValue(field.value)} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}/>
-      );
-    }
+  const renderField = (fieldName: keyof z.infer<typeof propertySchema>) => {
+    if (!conditionalFields.includes(fieldName)) return null;
+
+    const commonNumberProps = (field: any) => ({
+        ...field,
+        value: renderValue(field.value),
+        type: "number",
+        className: "text-center"
+    });
+
+    const commonCheckboxProps = (field: any) => ({
+        checked: field.value,
+        onCheckedChange: field.onChange
+    });
+
     switch(fieldName) {
-      case 'title': return <FormField control={control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre de l'annonce</FormLabel><FormControl><Input placeholder="Ex: Belle villa avec piscine" {...field} /></FormControl><FormMessage /></FormItem> )}/>;
-      case 'description': return <FormField control={control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="Décrivez le bien en détail..." {...field} value={renderValue(field.value)} /></FormControl><FormMessage /></FormItem> )}/>;
-      case 'address': return <FormField control={control} name="address" render={({ field }) => (<FormItem><FormLabel>Adresse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>;
-      case 'city': return <FormField control={control} name="city" render={({ field }) => (<FormItem><FormLabel>Ville</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>;
-      case 'country': return <FormField control={control} name="country" render={({ field }) => (<FormItem><FormLabel>Pays</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>;
-      case 'area_sqm': return <FormField control={control} name="area_sqm" render={({ field }) => (<FormItem><FormLabel>Superficie (m²)</FormLabel><FormControl><Input type="number" {...field} value={renderValue(field.value)}/></FormControl><FormMessage /></FormItem> )}/>;
-      case 'number_of_rooms': return <FormField control={control} name="number_of_rooms" render={({ field }) => (<FormItem><FormLabel>Nombre de pièces</FormLabel><FormControl><Input type="number" {...field} value={renderValue(field.value)} /></FormControl><FormMessage /></FormItem> )}/>;
-      case 'number_of_bathrooms': return <FormField control={control} name="number_of_bathrooms" render={({ field }) => (<FormItem><FormLabel>Nombre de salles de bain</FormLabel><FormControl><Input type="number" {...field} value={renderValue(field.value)} /></FormControl><FormMessage /></FormItem> )}/>;
-      case 'year_built': return <FormField control={control} name="year_built" render={({ field }) => (<FormItem><FormLabel>Année de construction</FormLabel><FormControl><Input type="number" {...field} value={renderValue(field.value)} /></FormControl><FormMessage /></FormItem> )}/>;
+      case 'number_of_rooms': return <FormField control={control} name="number_of_rooms" render={({ field }) => (<FormItem className="max-w-[180px]"><FormLabel>Nombre de pièces</FormLabel><FormControl><Input {...commonNumberProps(field)} /></FormControl><FormMessage /></FormItem> )}/>;
+      case 'number_of_bathrooms': return <FormField control={control} name="number_of_bathrooms" render={({ field }) => (<FormItem className="max-w-[180px]"><FormLabel>Salles de bain</FormLabel><FormControl><Input {...commonNumberProps(field)} /></FormControl><FormMessage /></FormItem> )}/>;
+      case 'number_of_parkings': return <FormField control={control} name="number_of_parkings" render={({ field }) => (<FormItem className="max-w-[180px]"><FormLabel>Stationnements</FormLabel><FormControl><Input {...commonNumberProps(field)} /></FormControl><FormMessage /></FormItem> )}/>;
+      case 'floor_number': return <FormField control={control} name="floor_number" render={({ field }) => (<FormItem className="max-w-[180px]"><FormLabel>Numéro d'étage</FormLabel><FormControl><Input {...commonNumberProps(field)} /></FormControl><FormMessage /></FormItem> )}/>;
+      case 'total_floors': return <FormField control={control} name="total_floors" render={({ field }) => (<FormItem className="max-w-[180px]"><FormLabel>Total étages</FormLabel><FormControl><Input {...commonNumberProps(field)} /></FormControl><FormMessage /></FormItem> )}/>;
+      case 'has_garden': return <FormField control={control} name="has_garden" render={({ field }) => (<FormItem className="flex items-center space-x-2"><FormControl><Checkbox {...commonCheckboxProps(field)} /></FormControl><FormLabel className="!mt-0">Jardin</FormLabel></FormItem> )}/>;
+      case 'has_pool': return <FormField control={control} name="has_pool" render={({ field }) => (<FormItem className="flex items-center space-x-2"><FormControl><Checkbox {...commonCheckboxProps(field)} /></FormControl><FormLabel className="!mt-0">Piscine</FormLabel></FormItem> )}/>;
+      case 'has_elevator': return <FormField control={control} name="has_elevator" render={({ field }) => (<FormItem className="flex items-center space-x-2"><FormControl><Checkbox {...commonCheckboxProps(field)} /></FormControl><FormLabel className="!mt-0">Ascenseur</FormLabel></FormItem> )}/>;
       default: return null;
     }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="p-4 border rounded-lg">
           <FormField control={control} name="property_type_id" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-lg font-semibold">Quel type de bien annoncez-vous ?</FormLabel>
+              <FormLabel className="text-base font-semibold">Type de bien</FormLabel>
               <PropertyTypeSelect 
                 onValueChange={field.onChange} 
                 value={field.value}
                 propertyTypes={propertyTypes}
-                isLoading={false}
+                isLoading={propertyTypes.length === 0}
               />
               <FormMessage />
             </FormItem>
           )} />
         </div>
+        
         {watchedPropertyTypeId && (
-          <>
-            <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full">
+          <div className="space-y-6">
+            {/* Section 1: Champs principaux */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre de l’annonce</FormLabel><FormControl><Input {...field} disabled={isTitleLocked} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="area_sqm" render={({ field }) => (<FormItem><FormLabel>Superficie (en m²)</FormLabel><FormControl><Input type="number" {...field} value={renderValue(field.value)}/></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="address" render={({ field }) => (<FormItem><FormLabel>Quartier/Secteur</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="city" render={({ field }) => (<FormItem><FormLabel>Commune</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+            </div>
+
+            {/* Section 2: Description */}
+            <FormField control={control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (autres détails)</FormLabel><FormControl><Textarea {...field} value={renderValue(field.value)} rows={4} /></FormControl><FormMessage /></FormItem> )}/>
+
+            {/* Section 3: Cases à cocher principales */}
+            <div className="flex justify-center items-center gap-8 pt-4">
+                <FormField control={control} name="is_for_sale" render={({ field }) => (<FormItem className="flex items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="!mt-0">À vendre</FormLabel></FormItem> )}/>
+                <FormField control={control} name="is_for_rent" render={({ field }) => (<FormItem className="flex items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="!mt-0">À louer</FormLabel></FormItem> )}/>
+                <FormField control={control} name="is_featured" render={({ field }) => (<FormItem className="flex items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="!mt-0">Mettre sur le marché</FormLabel></FormItem> )}/>
+            </div>
+
+            {/* Section 4: Prix et champs liés */}
+            <div className="flex justify-center items-start gap-6">
+                <FormField control={control} name="price" render={({ field }) => (
+                    <FormItem className="max-w-[180px]">
+                      <FormLabel>{priceLabel}</FormLabel>
+                      <FormControl><Input type="number" className="text-center" {...field} value={renderValue(field.value)} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                )}/>
+                {showRentalFields && (
+                    <>
+                        <FormField control={control} name="security_deposit" render={({ field }) => (
+                            <FormItem className="max-w-[180px]">
+                                <FormLabel>Caution</FormLabel>
+                                <FormControl><Input type="number" className="text-center" {...field} value={renderValue(field.value)} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}/>
+                        <FormField control={control} name="advance_rent" render={({ field }) => (
+                            <FormItem className="max-w-[180px]">
+                                <FormLabel>Avance</FormLabel>
+                                <FormControl><Input type="number" className="text-center" {...field} value={renderValue(field.value)} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}/>
+                    </>
+                )}
+            </div>
+
+            <hr className="my-6" />
+
+            {/* Section 5: Champs conditionnels */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 justify-items-center">
+                {renderField('number_of_rooms')}
+                {renderField('number_of_bathrooms')}
+                {renderField('number_of_parkings')}
+                {renderField('floor_number')}
+                {renderField('total_floors')}
+            </div>
+            <div className="flex justify-center items-center gap-8 pt-4">
+                {renderField('has_garden')}
+                {renderField('has_pool')}
+                {renderField('has_elevator')}
+            </div>
+            
+            <hr className="my-6" />
+
+            {/* Section 6: Autres détails et Accordéon */}
+            <Accordion type="multiple" className="w-full">
               <AccordionItem value="item-1">
-                <AccordionTrigger><h3 className="text-lg font-semibold">Détails de l'annonce</h3></AccordionTrigger>
-                <AccordionContent className="pt-4 space-y-8">
-                  {renderField('title')}
-                  {renderField('description')}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {renderField('address')}
-                    {renderField('city')}
-                    {renderField('country')}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {renderField('area_sqm')}
-                    {renderField('number_of_rooms')}
-                    {renderField('number_of_bathrooms')}
-                  </div>
-                  {renderField('year_built')}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start pt-4">
-                    {propertyToEdit && (
+                <AccordionTrigger><h3 className="text-lg font-semibold">Autres détails & Statut</h3></AccordionTrigger>
+                <AccordionContent className="pt-4 space-y-6">
+                  <FormField control={control} name="year_built" render={({ field }) => (<FormItem><FormLabel>Année de construction</FormLabel><FormControl><Input type="number" {...field} value={renderValue(field.value)} /></FormControl><FormMessage /></FormItem> )}/>
+                  {propertyToEdit && (
                       <FormField control={control} name="status" render={({ field }) => (
                           <FormItem>
                               <FormLabel>Statut de l'annonce</FormLabel>
                               <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <FormControl>
-                                      <SelectTrigger><SelectValue placeholder="Sélectionnez un statut" /></SelectTrigger>
-                                  </FormControl>
+                                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                   <SelectContent>
                                       {Object.entries(statusTranslations).map(([value, label]) => (
                                           <SelectItem key={value} value={value}>{label}</SelectItem>
@@ -308,51 +392,6 @@ export default function PropertyForm({ propertyToEdit, onFormSubmit }: PropertyF
                               <FormMessage />
                           </FormItem>
                       )}/>
-                    )}
-                    <div className="space-y-4">
-                        <FormField control={control} name="is_for_sale" render={({ field }) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={watchedStatus !== 'available'}/></FormControl>
-                                <FormLabel className={watchedStatus !== 'available' ? 'text-gray-400 cursor-not-allowed' : ''}>À Vendre</FormLabel>
-                            </FormItem>
-                        )}/>
-                        <FormField control={control} name="is_for_rent" render={({ field }) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={watchedStatus !== 'available'}/></FormControl>
-                                <FormLabel className={watchedStatus !== 'available' ? 'text-gray-400 cursor-not-allowed' : ''}>À Louer</FormLabel>
-                            </FormItem>
-                        )}/>
-                        <FormField control={control} name="is_featured" render={({ field }) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                <FormLabel>Mettre en avant (Featured)</FormLabel>
-                            </FormItem>
-                        )}/>
-                    </div>
-                  </div>
-                  {renderField('price')}
-                  {watchedIsForRent && (
-                    <div className="p-4 border-l-4 border-blue-500 bg-blue-50 rounded-lg mt-6">
-                      <h4 className="font-semibold mb-4">Conditions de location</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <FormField control={control} name="security_deposit" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Caution (en mois)</FormLabel>
-                                <FormControl><Input type="number" {...field} value={renderValue(field.value)} /></FormControl>
-                                <FormDescription>Ex: 2</FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}/>
-                        <FormField control={control} name="advance_rent" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Avance (en mois)</FormLabel>
-                                <FormControl><Input type="number" {...field} value={renderValue(field.value)} /></FormControl>
-                                <FormDescription>Ex: 3</FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}/>
-                      </div>
-                    </div>
                   )}
                 </AccordionContent>
               </AccordionItem>
@@ -378,7 +417,7 @@ export default function PropertyForm({ propertyToEdit, onFormSubmit }: PropertyF
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-          </>
+          </div>
         )}
         <Button type="submit" disabled={isLoading || !watchedPropertyTypeId} className="w-full md:w-auto mt-8">
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

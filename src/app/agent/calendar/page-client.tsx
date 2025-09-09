@@ -25,7 +25,7 @@ export default function AgentCalendarPageClient({ visits, availabilities }: Agen
                     <TabsTrigger value="availability">Gestion des Disponibilités</TabsTrigger>
                 </TabsList>
                 <TabsContent value="calendar" className="h-[75vh]">
-                    <AgentCalendar visits={visits} />
+                    <AgentCalendar visits={visits} availabilities={availabilities} />
                 </TabsContent>
                 <TabsContent value="availability">
                     <AvailabilityManager availabilities={availabilities} updateAction={updateAvailabilitiesAction} />

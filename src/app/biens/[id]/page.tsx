@@ -3,7 +3,7 @@
 // --- PARTIE SERVEUR ---
 // Ces imports et fonctions ne seront JAMAIS envoyés au client.
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server'; // Le client pour les Composants Serveur
+import { createSupabaseServerClient } from '@/lib/supabase/server'; // Le client pour les Composants Serveur
 import { Tables, Database } from '@/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import PropertyDetailClientPage from './PropertyDetailClientPage'; // On importe le nouveau composant client
@@ -21,7 +21,7 @@ interface PropertyDetailPageProps {
 
 // Fonction de récupération des données, purement côté serveur
 async function getPropertyDetails(id: string): Promise<Property | null> {
-  const supabase = await createClient();
+  const supabase = await createSupabaseServerClient();
   
   // 1. Récupérer la propriété d'abord
   const sb: SupabaseClient<Database> = supabase as unknown as SupabaseClient<Database>;

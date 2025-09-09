@@ -8,7 +8,6 @@ import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
-  SidebarFooter,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -18,10 +17,8 @@ import {
   Calendar,
   Home,
   Users,
-  LogOut,
   Settings,
 } from 'lucide-react';
-import { logout } from '@/app/auth/actions';
 
 const menuItems = [
   { href: '/agent/dashboard', label: 'Tableau de Bord', icon: LayoutDashboard },
@@ -60,14 +57,7 @@ export function AgentSidebar() {
           ))}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter>
-        <form action={logout}>
-          <SidebarMenuButton tooltip="Se déconnecter" type="submit">
-            <LogOut className="size-4" />
-            <span>Se déconnecter</span>
-          </SidebarMenuButton>
-        </form>
-      </SidebarFooter>
+      {/* SidebarFooter supprimé - bouton de déconnexion maintenant dans le header */}
     </Sidebar>
   );
 }
