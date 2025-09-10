@@ -1,0 +1,367 @@
+Étape 1: Types TypeScript
+
+// types/payment.ts
+export interface CinetPayInitRequest {
+  amount: number;
+  currency: string;
+  transaction_id: string;
+  description: string;
+  customer_name: string;
+  customer_surname: string;
+  customer_email: string;
+  customer_phone_number: string;
+  customer_address: string;
+  customer_city: string;
+  customer_country: string;
+  customer_state: string;
+  customer_zip_code: string;
+  return_url: string;
+  notify_url: string;
+  channels?: string;
+}
+
+export interface CinetPayInitResponse {
+  code: string;
+  message: string;
+  description: string;
+  data?: {
+    payment_token: string;
+    payment_url: string;
+  };
+  api_response_id: string;
+}
+
+// AJOUT: Type spécifique pour la réponse de vérification de transaction.
+export interface CinetPayVerificationResponse {
+  code: string; // "00" en cas de succès
+  message: string;
+  data?: {
+    status: "ACCEPTED" | "REFUSED" | "PENDING" | "EXPIRED";
+    amount: number;
+    currency: string;
+    payment_method: string;
+    // ... et autres champs utiles retournés par l'API
+  };
+  api_response_id: string;
+}
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+Étape 2: Service CinetPay
+
+// lib/cinetpay.ts
+import axios from 'axios';
+import { CinetPayInitRequest, CinetPayInitResponse, CinetPayVerificationResponse } from '@/types/payment';
+
+const CINETPAY_API_URL = 'https://api-checkout.cinetpay.com/v2';
+
+class CinetPayService {
+  private apiKey: string;
+  private siteId: string;
+
+  constructor( ) {
+    // AJOUT: Vérification que les variables d'environnement sont bien chargées.
+    if (!process.env.CINETPAY_APIKEY || !process.env.CINETPAY_SITE_ID) {
+      throw new Error("Les variables d'environnement CINETPAY_APIKEY et CINETPAY_SITE_ID sont requises.");
+    }
+    this.apiKey = process.env.CINETPAY_APIKEY;
+    this.siteId = process.env.CINETPAY_SITE_ID;
+  }
+
+  async initializePayment(data: Omit<CinetPayInitRequest, 'apikey' | 'site_id'>): Promise<CinetPayInitResponse> {
+    const payload = {
+      apikey: this.apiKey,
+      site_id: this.siteId,
+      ...data,
+    };
+
+    try {
+      const response = await axios.post<CinetPayInitResponse>(`${CINETPAY_API_URL}/payment`, payload, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return response.data;
+    } catch (error) {
+      // CHANGEMENT: Gestion d'erreur améliorée pour logger les détails de l'API.
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('CinetPay API Error Response:', error.response.data);
+        throw new Error(`Erreur API CinetPay: ${error.response.data.description || error.message}`);
+      }
+      throw new Error(`Erreur lors de l'initialisation du paiement: ${error.message}`);
+    }
+  }
+
+  async verifyTransaction(transactionId: string): Promise<CinetPayVerificationResponse> {
+    const payload = {
+      apikey: this.apiKey,
+      site_id: this.siteId,
+      transaction_id: transactionId,
+    };
+
+    try {
+      const response = await axios.post<CinetPayVerificationResponse>(`${CINETPAY_API_URL}/payment/check`, payload, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return response.data;
+    } catch (error) {
+      // CHANGEMENT: Gestion d'erreur améliorée.
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('CinetPay Verification Error Response:', error.response.data);
+        throw new Error(`Erreur API CinetPay (Vérification): ${error.response.data.description || error.message}`);
+      }
+      throw new Error(`La vérification de la transaction a échoué: ${error.message}`);
+    }
+  }
+}
+
+// CHANGEMENT: Export d'une instance unique (Singleton) pour une meilleure performance.
+const cinetPayService = new CinetPayService();
+export default cinetPayService;
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+Étape 3: API Routes
+
+Route d'Initialisation
+
+// app/api/payment/initialize/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import cinetPayService from '@/lib/cinetpay'; // CHANGEMENT: Import de l'instance singleton
+import { CinetPayInitRequest } from '@/types/payment';
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    
+    // AJOUT: Validation basique des données entrantes
+    if (!body.amount || !body.customer_name) {
+        return NextResponse.json({ error: 'Données de paiement invalides' }, { status: 400 });
+    }
+    
+    const paymentData: Omit<CinetPayInitRequest, 'apikey' | 'site_id'> = {
+      transaction_id: `txn_${Date.now()}`,
+      amount: body.amount,
+      currency: 'XOF',
+      description: body.description,
+      customer_name: body.customer_name,
+      customer_surname: body.customer_surname,
+      customer_email: body.customer_email,
+      customer_phone_number: body.customer_phone_number,
+      customer_address: body.customer_address,
+      customer_city: body.customer_city,
+      customer_country: body.customer_country,
+      customer_state: body.customer_state,
+      customer_zip_code: body.customer_zip_code,
+      return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success?transaction_id=txn_${Date.now()}`,
+      notify_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/notify`,
+      channels: 'ALL',
+    };
+
+    const result = await cinetPayService.initializePayment(paymentData);
+    
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('[PAYMENT_INIT_ERROR]', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+Webhook de Notification
+
+// app/api/payment/notify/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import cinetPayService from '@/lib/cinetpay';
+
+export async function POST(req: NextRequest) {
+  try {
+    const notification = await req.json();
+    
+    // L'ID de transaction est souvent dans `cpm_trans_id` pour les notifications
+    const transactionId = notification.cpm_trans_id;
+
+    if (!transactionId) {
+      return NextResponse.json({ error: 'ID de transaction manquant dans la notification' }, { status: 400 });
+    }
+    
+    // CHANGEMENT MAJEUR: Étape de sécurité cruciale.
+    // On ne fait pas confiance à la notification, on vérifie auprès de CinetPay.
+    const verificationResult = await cinetPayService.verifyTransaction(transactionId);
+
+    if (verificationResult.code === '00' && verificationResult.data?.status === 'ACCEPTED') {
+      // Le paiement est VRAIMENT confirmé.
+      console.log(`Paiement confirmé pour la transaction ${transactionId}.`);
+      
+      // TODO: Implémentez votre logique métier ici.
+      // 1. Recherchez la commande dans votre base de données avec `transactionId`.
+      // 2. Mettez à jour son statut à "PAYÉE".
+      // 3. Envoyez un email de confirmation au client.
+      // 4. Déclenchez la livraison, etc.
+
+    } else {
+      // Le paiement a échoué, est en attente, ou la vérification a échoué.
+      console.warn(`La vérification pour la transaction ${transactionId} a échoué ou le paiement n'est pas accepté. Statut: ${verificationResult.data?.status || 'INCONNU'}`);
+    }
+    
+    // Répondez à CinetPay que vous avez bien traité la notification.
+    return NextResponse.json({ status: 'success' });
+  } catch (error) {
+    console.error('[NOTIFY_WEBHOOK_ERROR]', error);
+    return NextResponse.json({ error: 'Échec du traitement de la notification' }, { status: 500 });
+  }
+}
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+Étape 4: Interface de Paiement
+
+// app/payment/page.tsx
+'use client';
+
+import { useState } from 'react';
+
+export default function PaymentPage() {
+  const [loading, setLoading] = useState(false);
+  // AJOUT: État pour une meilleure gestion des erreurs côté client.
+  const [error, setError] = useState<string | null>(null);
+
+  const handlePayment = async (formData: FormData) => {
+    setLoading(true);
+    setError(null); // Réinitialiser l'erreur
+    
+    try {
+      const response = await fetch('/api/payment/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: 1000,
+          description: 'Paiement de test',
+          customer_name: formData.get('name'),
+          customer_surname: formData.get('surname'),
+          customer_email: formData.get('email'),
+          customer_phone_number: formData.get('phone'),
+          customer_address: formData.get('address'),
+          customer_city: formData.get('city'),
+          customer_country: 'CI',
+          customer_state: 'CI',
+          customer_zip_code: '00000',
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.code === '201' && result.data?.payment_url) {
+        // Redirection vers la page de paiement de CinetPay
+        window.location.href = result.data.payment_url;
+      } else {
+        // CHANGEMENT: Affichage de l'erreur dans l'UI au lieu d'une alerte.
+        setError(result.description || 'Erreur lors de l\'initialisation du paiement.');
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError('Une erreur de connexion est survenue. Veuillez réessayer.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">Effectuer un Paiement</h1>
+      
+      <form action={handlePayment}>
+        <div className="space-y-4">
+          {/* ... (tous vos champs input restent les mêmes) ... */}
+          <input name="name" placeholder="Nom" required className="w-full p-3 border rounded" />
+          <input name="surname" placeholder="Prénom" required className="w-full p-3 border rounded" />
+          <input name="email" type="email" placeholder="Email" required className="w-full p-3 border rounded" />
+          <input name="phone" placeholder="Téléphone" required className="w-full p-3 border rounded" />
+          <input name="address" placeholder="Adresse" required className="w-full p-3 border rounded" />
+          <input name="city" placeholder="Ville" required className="w-full p-3 border rounded" />
+          
+          {/* AJOUT: Affichage du message d'erreur */}
+          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? 'Traitement...' : 'Payer 1000 XOF'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+Étape 5: Intégration Seamless
+
+// components/SeamlessPaymentButton.tsx
+'use client';
+
+import Script from 'next/script';
+import { useState } from 'react';
+
+// AJOUT: Déclaration globale pour éviter les erreurs TypeScript
+declare global {
+  interface Window { CinetPay: any; }
+}
+
+export default function SeamlessPaymentButton() {
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
+
+  const handleSeamlessPayment = () => {
+    if (!isScriptLoaded || !window.CinetPay) {
+        alert("Le service de paiement n'est pas encore prêt.");
+        return;
+    }
+
+    window.CinetPay.setConfig({
+      apikey: process.env.NEXT_PUBLIC_CINETPAY_APIKEY!,
+      site_id: parseInt(process.env.NEXT_PUBLIC_CINETPAY_SITE_ID!),
+      notify_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/notify`,
+      mode: 'SANDBOX' // 'PRODUCTION' pour le live
+    });
+
+    window.CinetPay.getCheckout({
+      transaction_id: `txn_seamless_${Date.now()}`,
+      amount: 1000,
+      currency: 'XOF',
+      channels: 'ALL',
+      description: 'Paiement Seamless',
+      // ... autres données client
+    });
+
+    // ATTENTION: `waitResponse` est utile pour l'UX (ex: fermer la modale, afficher un message),
+    // mais ne DOIT PAS être utilisé pour valider une commande. La validation
+    // doit impérativement se faire via le webhook serveur sécurisé.
+    window.CinetPay.waitResponse((data: any) => {
+      if (data.status === "ACCEPTED") {
+        alert("Paiement réussi ! Votre commande est en cours de traitement.");
+        // Rediriger vers une page de succès, par exemple.
+        window.location.href = '/payment/success';
+      } else {
+        alert("Le paiement a échoué ou a été annulé.");
+      }
+    });
+  };
+
+  return (
+    <>
+      {/* CHANGEMENT: Utilisation du composant <Script> de Next.js */}
+      <Script
+        src="https://cdn.cinetpay.com/seamless/main.js"
+        onLoad={( ) => setIsScriptLoaded(true)}
+        onError={() => console.error("Erreur de chargement du script Seamless CinetPay")}
+      />
+      <button
+        onClick={handleSeamlessPayment}
+        disabled={!isScriptLoaded}
+        className="bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700 disabled:opacity-50"
+      >
+        {isScriptLoaded ? 'Payer avec Seamless' : 'Chargement...'}
+      </button>
+    </>
+  );
+}
