@@ -28,6 +28,11 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Utilisateur non authentifié' }, { status: 401 });
     }
+
+    // Vérification que l'utilisateur a un email
+    if (!user.email) {
+      return NextResponse.json({ error: 'Email utilisateur requis' }, { status: 400 });
+    }
     
     // AJOUT: Validation basique des données entrantes
     if (!body.amount || body.amount <= 0) {
@@ -43,7 +48,7 @@ export async function POST(req: NextRequest) {
       description: `Dépôt de fonds pour ${user.email}`,
       customer_name: user.user_metadata.full_name || 'N/A',
       customer_surname: '',
-      customer_email: user.email,
+      customer_email: user.email!, // Nous avons vérifié que user.email existe plus haut
       customer_phone_number: user.phone || '',
       customer_address: '',
       customer_city: '',
