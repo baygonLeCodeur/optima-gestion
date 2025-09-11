@@ -1,6 +1,6 @@
 // src/components/header.tsx
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Menu } from 'lucide-react';
@@ -23,10 +23,24 @@ const mainNavLinks = [
 
 export default function Header() {
   const [open, setOpen] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0);
   const pathname = usePathname();
   const isMobile = useMobile();
   const { user, loading } = useAuth(); 
   const router = useRouter();
+
+  // Écouter les changements d'état d'authentification pour forcer le re-render
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setForceUpdate(prev => prev + 1);
+    };
+
+    // Écouter l'événement personnalisé dispatché depuis useAuth
+    if (typeof window !== 'undefined') {
+      window.addEventListener('auth-state-changed', handleAuthChange);
+      return () => window.removeEventListener('auth-state-changed', handleAuthChange);
+    }
+  }, []);
 
   const handleContactClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();

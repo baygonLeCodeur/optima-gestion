@@ -33,9 +33,15 @@ export async function POST(req: Request) {
 
   // Il n'est plus nécessaire de définir les cookies manuellement.
   // Supabase s'en est déjà occupé via le middleware et le client serveur.
-  // On retourne simplement une réponse de succès. Le middleware se chargera de la redirection.
+  // On retourne simplement une réponse de succès avec les informations utilisateur.
   return NextResponse.json({
     message: 'Connexion réussie',
-    user: data.user,
+    user: {
+      id: data.user.id,
+      email: data.user.email,
+      user_metadata: data.user.user_metadata,
+      role: data.user.user_metadata?.role || 'client'
+    },
+    session: data.session,
   });
 }

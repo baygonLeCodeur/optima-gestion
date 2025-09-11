@@ -1,7 +1,7 @@
 // src/app/login/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
+import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -18,6 +20,24 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useAuth();
+
+  // Rediriger si l'utilisateur est déjà connecté
+  useEffect(() => {
+    if (user) {
+      // Rediriger vers le dashboard approprié selon le rôle
+      switch (user.role) {
+        case 'admin':
+          router.push('/admin/dashboard');
+          break;
+        case 'agent':
+          router.push('/agent/dashboard');
+          break;
+        default:
+          router.push('/dashboard');
+      }
+    }
+  }, [user, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,15 +56,39 @@ export default function Login() {
         throw new Error(result.error || 'Erreur de connexion');
       }
 
+      const result = await response.json();
+
       toast({
         title: 'Succès',
         description: 'Connexion réussie ! Redirection en cours...',
       });
 
-      // On rafraîchit la page. Le middleware va intercepter la requête,
-      // voir que l'utilisateur est maintenant connecté grâce aux cookies définis par Supabase,
-      // et le rediriger vers le bon tableau de bord. C'est parfait.
-      router.refresh();
+      // Créer un client Supabase et forcer une synchronisation de l'état
+      const supabase = createClient();
+      
+      // Récupérer la session fraîche pour déclencher onAuthStateChange
+      await supabase.auth.getSession();
+      
+      // Attendre un court moment pour que le hook useAuth se mette à jour
+      setTimeout(() => {
+        // Force une nouvelle récupération de session pour s'assurer que l'état est synchronisé
+        supabase.auth.getSession().then(() => {
+          router.refresh();
+          
+          // Redirection conditionnelle basée sur le rôle utilisateur
+          const userRole = result.user?.user_metadata?.role || 'client';
+          switch (userRole) {
+            case 'admin':
+              router.push('/admin/dashboard');
+              break;
+            case 'agent':
+              router.push('/agent/dashboard');
+              break;
+            default:
+              router.push('/dashboard');
+          }
+        });
+      }, 500);
       
     } catch (error: any) {
       toast({
@@ -52,9 +96,9 @@ export default function Login() {
         description: error.message || 'Une erreur est survenue',
         variant: 'destructive',
       });
-    } finally {
       setLoading(false);
     }
+    // Ne pas définir loading à false ici, on le laisse jusqu'à la redirection
   };
 
   // Le reste du JSX est identique et parfait.

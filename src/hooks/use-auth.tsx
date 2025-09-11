@@ -71,17 +71,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       (event, changedSession) => {
   // eslint-disable-next-line no-console
   console.debug('use-auth: onAuthStateChange', event, changedSession);
-  setSession(changedSession);
+  
+        // Mettre à jour la session immédiatement
+        setSession(changedSession);
         
         if (changedSession?.user) {
           // On lit le rôle depuis les métadonnées de l'utilisateur, c'est la source de vérité.
           const role = changedSession.user.user_metadata?.role || 'client';
-          setUser({ ...changedSession.user, role });
+          const userWithRole = { ...changedSession.user, role };
+          setUser(userWithRole);
+          // eslint-disable-next-line no-console
+          console.debug('use-auth: User connected with role:', role);
         } else {
           // Si la session est nulle (déconnexion), on vide l'utilisateur.
           setUser(null);
+          // eslint-disable-next-line no-console
+          console.debug('use-auth: User disconnected');
         }
+        
+        // Toujours arrêter le loading après un changement d'état
         setLoading(false);
+        
+        // Forcer un re-render pour s'assurer que les composants se mettent à jour
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('auth-state-changed'));
+        }
       }
     );
 
