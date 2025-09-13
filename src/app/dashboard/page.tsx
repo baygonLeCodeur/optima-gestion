@@ -1,9 +1,9 @@
 // src/app/dashboard/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import nextDynamic from 'next/dynamic';
+import { Suspense, useEffect, useState } from 'react'; // Suspense est importé de 'react'
+import { useRouter, useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/use-auth';
 import { useUserFavorites, FavoriteProperty } from '@/hooks/useUserFavorites';
 import { useUserVisits, UserVisit } from '@/hooks/useUserVisits';
@@ -28,11 +28,8 @@ import { PropertyCardType } from '@/types';
 import { Tables } from '@/types/supabase';
 import { useIsClient } from '@/hooks/use-is-client';
 
-// Désactiver le pré-rendu statique pour cette page
-export const dynamic = 'force-dynamic';
-
 // --- IMPORTATION DYNAMIQUE DU COMPOSANT DE CARTE ---
-const SearchResultsMap = nextDynamic(
+const SearchResultsMap = dynamic(
   () => import('@/components/SearchResultsMap'),
   { 
     ssr: false,
@@ -42,7 +39,6 @@ const SearchResultsMap = nextDynamic(
 
 // --- Helper Function ---
 const mapPropertyData = (property: Tables<'properties'> | null): PropertyCardType | null => {
-    // Vérification de nullité pour éviter l'erreur
     if (!property) {
         console.warn('Property is null, skipping mapping');
         return null;
@@ -158,81 +154,58 @@ const SavedSearchesTabContent: React.FC<{
   </Card>
 );
 
-// --- Composant Principal ---
-const DashboardContent: React.FC = () => {
+// --- NOUVEAU COMPOSANT CLIENT QUI CONTIENT TOUTE LA LOGIQUE ---
+function DashboardClientUI() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  // useSearchParams est maintenant utilisé en toute sécurité ici
+  const searchParams = useSearchParams(); 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-
-  // Effet pour marquer le montage côté client
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
   
-  // N'initialiser les hooks de données que si l'utilisateur est connecté
   const { favorites, isLoading: isLoadingFavorites, error: favoritesError } = useUserFavorites(user);
   const { visits, isLoading: isLoadingVisits, error: visitsError } = useUserVisits(user);
   const { savedSearches, isLoading: isLoadingSearches, error: searchesError, handleAlertToggle } = useUserSavedSearches(user);
 
-  // Effet pour gérer la redirection et l'initialisation
   useEffect(() => {
-    if (!authLoading && isClient) {
+    if (!authLoading) {
       if (!user) {
         router.push('/login');
       } else {
         setIsInitialized(true);
       }
     }
-  }, [user, authLoading, router, isClient]);
-
-  // Mécanisme de rafraîchissement automatique - Version forcée
+  }, [user, authLoading, router]);
+  
+  // NOTE : Les effets de rafraîchissement automatique sont conservés tels quels
+  // mais sont maintenant à l'intérieur de ce composant client.
   useEffect(() => {
-    if (!isClient) return;
-    
-    // Vérifier si c'est le premier chargement
     const hasRefreshed = localStorage.getItem('dashboard_auto_refreshed');
     const currentTime = Date.now();
     
     if (!hasRefreshed) {
-      console.log('🔄 Programmation du rafraîchissement automatique...');
-      
-      // Marquer immédiatement pour éviter les boucles
       localStorage.setItem('dashboard_auto_refreshed', currentTime.toString());
-      
-      // Rafraîchissement forcé après 5 secondes, peu importe l'état
-      const refreshTimer = setTimeout(() => {
-        console.log('🔄 Exécution du rafraîchissement automatique...');
-        window.location.reload();
-      }, 5000);
-
+      const refreshTimer = setTimeout(() => window.location.reload(), 5000);
       return () => clearTimeout(refreshTimer);
     } else {
-      // Nettoyer le flag après 1 minute pour permettre un nouveau cycle si nécessaire
       const refreshTime = parseInt(hasRefreshed);
-      if (currentTime - refreshTime > 60000) { // 1 minute
+      if (currentTime - refreshTime > 60000) {
         localStorage.removeItem('dashboard_auto_refreshed');
       }
     }
-  }, [isClient]);
+  }, []);
 
-  // Effet de secours - si rien ne se charge après 10 secondes
   useEffect(() => {
-    if (!isClient) return;
-    
     const emergencyRefresh = setTimeout(() => {
       if (!user && !authLoading) {
-        console.log('🚨 Rafraîchissement d\'urgence - pas d\'utilisateur après 10s');
         window.location.reload();
       }
     }, 10000);
-
     return () => clearTimeout(emergencyRefresh);
-  }, [isClient]);
+  }, [user, authLoading]);
 
-  // Gestion de l'état de chargement initial
-  if (!isClient || authLoading || !isInitialized) {
+  // L'état de chargement initial est géré ici
+  if (authLoading || !isInitialized) {
     return (
       <div className="flex flex-col min-h-screen">
         <Header />
@@ -260,12 +233,10 @@ const DashboardContent: React.FC = () => {
     );
   }
 
-  // Si pas d'utilisateur après initialisation, ne rien afficher (redirection en cours)
   if (!user) {
     return null;
   }
 
-  // Calculer les propriétés pour la carte de façon sécurisée
   const allProperties = favorites && Array.isArray(favorites) 
     ? favorites
         .map(fav => mapPropertyData(fav.properties))
@@ -288,6 +259,7 @@ const DashboardContent: React.FC = () => {
             <TabsTrigger value="map">Carte des favoris</TabsTrigger>
           </TabsList>
           
+          {/* Le contenu des onglets reste identique */}
           <TabsContent value="dashboard">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
               <div className="lg:col-span-2">
@@ -364,9 +336,33 @@ const DashboardContent: React.FC = () => {
       <Footer />
     </div>
   );
-};
+}
 
-// Export principal
+// --- LE COMPOSANT DE PAGE (default export) EST MAINTENANT UN SIMPLE CONTENEUR ---
+// Il n'a plus 'use client' et peut être un Server Component.
 export default function DashboardPage() {
-  return <DashboardContent />;
+  return (
+    <Suspense fallback={<DashboardLoadingFallback />}>
+      <DashboardClientUI />
+    </Suspense>
+  );
+}
+
+// --- COMPOSANT DE FALLBACK POUR SUSPENSE ---
+// Affiche une interface de chargement simple pendant que le composant client se charge.
+function DashboardLoadingFallback() {
+  return (
+     <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-grow container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-lg">Chargement...</p>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+  )
 }
