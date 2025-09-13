@@ -1,7 +1,7 @@
 // src/app/dashboard/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/use-auth';
@@ -155,11 +155,11 @@ const SavedSearchesTabContent: React.FC<{
   </Card>
 );
 
-// --- Composant Principal (VERSION CORRIGÉE) ---
-export default function DashboardPage() {
+// --- Composant Principal avec Suspense ---
+const DashboardContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // Maintenant dans une boundary Suspense
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isInitialized, setIsInitialized] = useState(false);
   const [hasAutoRefreshed, setHasAutoRefreshed] = useState(false);
@@ -352,5 +352,30 @@ export default function DashboardPage() {
       </main>
       <Footer />
     </div>
+  );
+};
+
+// Composant Loading pour Suspense
+const DashboardLoading: React.FC = () => (
+  <div className="flex flex-col min-h-screen">
+    <Header />
+    <main className="flex-grow container mx-auto px-4 py-8">
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-lg">Chargement...</p>
+        </div>
+      </div>
+    </main>
+    <Footer />
+  </div>
+);
+
+// Export principal avec Suspense boundary
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardLoading />}>
+      <DashboardContent />
+    </Suspense>
   );
 }

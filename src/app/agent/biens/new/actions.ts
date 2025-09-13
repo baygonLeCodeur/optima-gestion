@@ -1,7 +1,7 @@
 // src/app/agent/biens/new/actions.ts
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { propertySchema } from '@/components/PropertyForm';
 import * as z from 'zod';
 import { Database } from '@/types/supabase';
@@ -10,7 +10,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 type ActionValues = z.infer<typeof propertySchema> & { image_paths: string[] };
 
 export async function createPropertyAction(values: ActionValues) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
