@@ -1,4 +1,4 @@
-// src/components/PropertyTypeManager.tsx
+/* src/components/PropertyTypeManager.tsx */
 'use client';
 
 import { useState, useEffect } from 'react';
