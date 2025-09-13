@@ -1,7 +1,7 @@
 // src/app/agent/biens/edit/[id]/page.tsx
 import { notFound, redirect } from 'next/navigation';
 import * as z from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import PropertyForm, { propertySchema } from '@/components/PropertyForm';
 import { Database } from '@/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -17,7 +17,7 @@ type EditPropertyPageProps = {
 async function updatePropertyAction(propertyId: string, values: z.infer<typeof propertySchema> & { image_paths: string[] }) {
     'use server';
     
-    const supabase = await createClient();
+    const supabase = await createSupabaseServerClient();
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -72,7 +72,7 @@ async function updatePropertyAction(propertyId: string, values: z.infer<typeof p
 }
 
 export default async function EditPropertyPage({ params }: EditPropertyPageProps) {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServerClient();
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || user.user_metadata?.role !== 'agent') {

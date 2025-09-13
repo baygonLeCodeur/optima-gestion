@@ -1,5 +1,5 @@
 // src/app/agent/leads/page.tsx
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { AgentLeadTable } from '@/components/AgentLeadTable';
 import { Tables } from '@/types/supabase';
@@ -7,7 +7,7 @@ import { Tables } from '@/types/supabase';
 export type Lead = Tables<'leads'>;
 
 async function getAgentLeads(agentId: string): Promise<Lead[]> {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
         .from('leads')
         .select('*')
@@ -22,7 +22,7 @@ async function getAgentLeads(agentId: string): Promise<Lead[]> {
 }
 
 export default async function AgentLeadsPage() {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user || user.user_metadata?.role !== 'agent') {

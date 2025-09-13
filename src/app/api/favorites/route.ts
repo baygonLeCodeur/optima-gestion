@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
   try {
@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     if (!propertyId) return NextResponse.json({ error: 'propertyId required' }, { status: 400 });
 
     // Attempt to identify user from cookies/session
-    const serverClient = await createClient();
+    const serverClient = await createSupabaseServerClient();
     const { data: { user } } = await serverClient.auth.getUser();
     const userId = user?.id;
 
@@ -30,7 +30,7 @@ export async function DELETE(request: Request) {
     const { propertyId } = body;
     if (!propertyId) return NextResponse.json({ error: 'propertyId required' }, { status: 400 });
 
-    const serverClient = await createClient();
+    const serverClient = await createSupabaseServerClient();
     const { data: { user } } = await serverClient.auth.getUser();
     const userId = user?.id;
 
