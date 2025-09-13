@@ -18,6 +18,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>; // Nouvelle méthode ajoutée
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +33,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Crée le client Supabase au montage (évite la création lors de l'import du module)
   const supabase = useMemo(() => createClient(), []);
+
+  // Fonction pour mettre à jour l'état utilisateur à partir d'une session
+  const updateUserFromSession = (currentSession: Session | null) => {
+    setSession(currentSession);
+    
+    if (currentSession?.user) {
+      const role = currentSession.user.user_metadata?.role || 'client';
+      setUser({ ...currentSession.user, role });
+    } else {
+      setUser(null);
+    }
+    setLoading(false);
+  };
+
+  // Nouvelle méthode pour rafraîchir manuellement la session
+  const refreshSession = async () => {
+    try {
+      // Force la récupération de la session actuelle depuis les cookies
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      // Debug: log de diagnostic
+      // eslint-disable-next-line no-console
+      console.debug('use-auth: refreshSession result', currentSession);
+      
+      updateUserFromSession(currentSession);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Erreur refreshSession', err);
+    }
+  };
 
   useEffect(() => {
     // Cette fonction est appelée au chargement initial pour récupérer la session.
@@ -48,18 +79,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Debug: log de diagnostic (sera visible dans la console du navigateur)
         // eslint-disable-next-line no-console
         console.debug('use-auth: getInitialSession result', result);
-        setSession(initialSession);
-
-        if (initialSession?.user) {
-          const role = initialSession.user.user_metadata?.role || 'client';
-          setUser({ ...initialSession.user, role });
-        }
+        
+        updateUserFromSession(initialSession);
       } catch (err) {
         // En cas d'erreur réseau ou d'API, on logge côté console et on continue pour ne pas bloquer l'UI
         // eslint-disable-next-line no-console
         console.error('Erreur getInitialSession', err);
-      } finally {
-        // Toujours enlever le spinner même si l'appel échoue
         setLoading(false);
       }
     };
@@ -71,17 +96,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       (event, changedSession) => {
   // eslint-disable-next-line no-console
   console.debug('use-auth: onAuthStateChange', event, changedSession);
-  setSession(changedSession);
-        
-        if (changedSession?.user) {
-          // On lit le rôle depuis les métadonnées de l'utilisateur, c'est la source de vérité.
-          const role = changedSession.user.user_metadata?.role || 'client';
-          setUser({ ...changedSession.user, role });
-        } else {
-          // Si la session est nulle (déconnexion), on vide l'utilisateur.
-          setUser(null);
-        }
-        setLoading(false);
+  
+        updateUserFromSession(changedSession);
       }
     );
 
@@ -107,7 +123,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     router.push('/'); // Redirige vers l'accueil après déconnexion.
   };
 
-  const value = { user, session, loading, signOut };
+  const value = { user, session, loading, signOut, refreshSession };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth'; // Import ajouté
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { refreshSession } = useAuth(); // Utilisation du hook
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -41,9 +43,13 @@ export default function Login() {
         description: 'Connexion réussie ! Redirection en cours...',
       });
 
-      // On rafraîchit la page. Le middleware va intercepter la requête,
+      // CORRECTION : On rafraîchit d'abord la session côté client
+      // pour que le hook useAuth soit immédiatement mis à jour
+      await refreshSession();
+      
+      // Puis on rafraîchit la page. Le middleware va intercepter la requête,
       // voir que l'utilisateur est maintenant connecté grâce aux cookies définis par Supabase,
-      // et le rediriger vers le bon tableau de bord. C'est parfait.
+      // et le rediriger vers le bon tableau de bord.
       router.refresh();
       
     } catch (error: any) {
