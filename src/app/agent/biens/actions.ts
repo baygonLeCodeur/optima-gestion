@@ -1,7 +1,7 @@
 // src/app/agent/biens/actions.ts
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { Database, Tables } from '@/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
@@ -10,7 +10,7 @@ import { AgentProperty } from './page';
 
 // L'action de suppression ne change pas, elle est déjà parfaite.
 export async function deletePropertyAction(propertyId: string): Promise<{ success: boolean, error?: string }> {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -33,7 +33,7 @@ export async function updatePropertyStatusAction(
   propertyId: string,
   status: 'vendu' | 'loué'
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -74,7 +74,7 @@ export async function loadAgentProperties(filter: {
     sortBy?: string; 
     order?: string 
 }): Promise<AgentProperty[]> {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user || user.user_metadata?.role !== 'agent') {
