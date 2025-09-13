@@ -1,9 +1,9 @@
 // src/app/dashboard/page.tsx
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import nextDynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/use-auth';
 import { useUserFavorites, FavoriteProperty } from '@/hooks/useUserFavorites';
 import { useUserVisits, UserVisit } from '@/hooks/useUserVisits';
@@ -28,8 +28,11 @@ import { PropertyCardType } from '@/types';
 import { Tables } from '@/types/supabase';
 import { useIsClient } from '@/hooks/use-is-client';
 
+// Désactiver le pré-rendu statique pour cette page
+export const dynamic = 'force-dynamic';
+
 // --- IMPORTATION DYNAMIQUE DU COMPOSANT DE CARTE ---
-const SearchResultsMap = dynamic(
+const SearchResultsMap = nextDynamic(
   () => import('@/components/SearchResultsMap'),
   { 
     ssr: false,
@@ -155,14 +158,18 @@ const SavedSearchesTabContent: React.FC<{
   </Card>
 );
 
-// --- Composant Principal avec Suspense ---
+// --- Composant Principal ---
 const DashboardContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams(); // Maintenant dans une boundary Suspense
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isInitialized, setIsInitialized] = useState(false);
-  const [hasAutoRefreshed, setHasAutoRefreshed] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Effet pour marquer le montage côté client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   
   // N'initialiser les hooks de données que si l'utilisateur est connecté
   const { favorites, isLoading: isLoadingFavorites, error: favoritesError } = useUserFavorites(user);
@@ -171,17 +178,19 @@ const DashboardContent: React.FC = () => {
 
   // Effet pour gérer la redirection et l'initialisation
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && isClient) {
       if (!user) {
         router.push('/login');
       } else {
         setIsInitialized(true);
       }
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, isClient]);
 
   // Mécanisme de rafraîchissement automatique - Version forcée
   useEffect(() => {
+    if (!isClient) return;
+    
     // Vérifier si c'est le premier chargement
     const hasRefreshed = localStorage.getItem('dashboard_auto_refreshed');
     const currentTime = Date.now();
@@ -206,10 +215,12 @@ const DashboardContent: React.FC = () => {
         localStorage.removeItem('dashboard_auto_refreshed');
       }
     }
-  }, []);
+  }, [isClient]);
 
   // Effet de secours - si rien ne se charge après 10 secondes
   useEffect(() => {
+    if (!isClient) return;
+    
     const emergencyRefresh = setTimeout(() => {
       if (!user && !authLoading) {
         console.log('🚨 Rafraîchissement d\'urgence - pas d\'utilisateur après 10s');
@@ -218,10 +229,10 @@ const DashboardContent: React.FC = () => {
     }, 10000);
 
     return () => clearTimeout(emergencyRefresh);
-  }, []);
+  }, [isClient]);
 
   // Gestion de l'état de chargement initial
-  if (authLoading || !isInitialized) {
+  if (!isClient || authLoading || !isInitialized) {
     return (
       <div className="flex flex-col min-h-screen">
         <Header />
@@ -355,27 +366,7 @@ const DashboardContent: React.FC = () => {
   );
 };
 
-// Composant Loading pour Suspense
-const DashboardLoading: React.FC = () => (
-  <div className="flex flex-col min-h-screen">
-    <Header />
-    <main className="flex-grow container mx-auto px-4 py-8">
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-lg">Chargement...</p>
-        </div>
-      </div>
-    </main>
-    <Footer />
-  </div>
-);
-
-// Export principal avec Suspense boundary
+// Export principal
 export default function DashboardPage() {
-  return (
-    <Suspense fallback={<DashboardLoading />}>
-      <DashboardContent />
-    </Suspense>
-  );
+  return <DashboardContent />;
 }
