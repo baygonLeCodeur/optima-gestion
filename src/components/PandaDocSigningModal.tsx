@@ -81,7 +81,7 @@ export const PandaDocSigningModal = ({
 
   // Étape 2: Initialiser l'iframe PandaDoc une fois l'ID de session obtenu
   useEffect(() => {
-    if (sessionId && pandaDocContainerRef.current) {
+    if (sessionId && pandaDocContainerRef.current && typeof window !== 'undefined' && window.pandadoc) {
         // S'assurer que le conteneur est vide avant de l'initialiser
         pandaDocContainerRef.current.innerHTML = '';
 

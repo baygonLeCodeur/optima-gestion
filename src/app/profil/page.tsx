@@ -11,7 +11,8 @@ import {
     VisitsHistoryList, 
     DocumentsList, 
     PaymentView, // <-- Remplacé PaymentsList par PaymentView
-    ProfileForm
+    ProfileForm,
+    ClientOnlyWrapper
 } from '@/components';
 
 
@@ -73,7 +74,9 @@ export default function ProfilePage() {
             <DocumentsList />
           </TabsContent>
           <TabsContent value="payments" className="mt-4">
-            <PaymentView />
+            <ClientOnlyWrapper fallback={<div className="flex justify-center items-center h-40">Chargement...</div>}>
+              <PaymentView />
+            </ClientOnlyWrapper>
           </TabsContent>
         </Tabs>
 

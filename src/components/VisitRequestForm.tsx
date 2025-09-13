@@ -107,7 +107,9 @@ export function VisitRequestForm({ propertyId, agentId }: VisitRequestFormProps)
       form.reset();
       setSelectedDate(undefined);
       
-      window.dispatchEvent(new CustomEvent('formSuccess', { detail: { propertyId } }));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('formSuccess', { detail: { propertyId } }));
+      }
 
     } catch (error: any) {
       toast({

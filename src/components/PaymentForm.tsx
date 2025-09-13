@@ -1,7 +1,7 @@
 // src/components/PaymentForm.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -27,6 +27,11 @@ type PaymentFormValues = z.infer<typeof paymentFormSchema>;
 export const PaymentForm = () => {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     const form = useForm<PaymentFormValues>({
         resolver: zodResolver(paymentFormSchema),
@@ -59,7 +64,11 @@ export const PaymentForm = () => {
                     title: 'Redirection vers la page de paiement...',
                     description: 'Vous allez être redirigé pour finaliser votre paiement.',
                 });
-                window.location.href = result.payment_link;
+                
+                // Vérifier si nous sommes côté client avant d'accéder à window
+                if (isClient && typeof window !== 'undefined') {
+                    window.location.href = result.payment_link;
+                }
             } else {
                  throw new Error("Le lien de paiement n'a pas été reçu.");
             }

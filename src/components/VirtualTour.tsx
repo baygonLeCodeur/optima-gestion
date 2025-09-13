@@ -24,18 +24,20 @@ export function VirtualTour({ scenes }: VirtualTourProps) {
 
   // Ce premier useEffect surveille la présence de la bibliothèque pannellum
   useEffect(() => {
-    if (window.pannellum) {
-      setIsPannellumLoaded(true);
-    } else {
-      // Si le script est chargé dynamiquement, il faut un moyen de savoir quand il est prêt.
-      // Dans notre cas (script dans layout.tsx), un simple intervalle de vérification est robuste.
-      const interval = setInterval(() => {
-        if (window.pannellum) {
-          setIsPannellumLoaded(true);
-          clearInterval(interval);
-        }
-      }, 100); // Vérifie toutes les 100ms
-      return () => clearInterval(interval);
+    if (typeof window !== 'undefined') {
+      if (window.pannellum) {
+        setIsPannellumLoaded(true);
+      } else {
+        // Si le script est chargé dynamiquement, il faut un moyen de savoir quand il est prêt.
+        // Dans notre cas (script dans layout.tsx), un simple intervalle de vérification est robuste.
+        const interval = setInterval(() => {
+          if (window.pannellum) {
+            setIsPannellumLoaded(true);
+            clearInterval(interval);
+          }
+        }, 100); // Vérifie toutes les 100ms
+        return () => clearInterval(interval);
+      }
     }
   }, []);
 
@@ -44,7 +46,7 @@ export function VirtualTour({ scenes }: VirtualTourProps) {
     let viewer: any;
 
     // On ne procède que si la bibliothèque est chargée, que la div est prête et que nous avons une configuration.
-    if (isPannellumLoaded && viewerRef.current && scenes) {
+    if (isPannellumLoaded && viewerRef.current && scenes && typeof window !== 'undefined') {
       try {
         viewer = window.pannellum.viewer(viewerRef.current, scenes);
       } catch (error) {

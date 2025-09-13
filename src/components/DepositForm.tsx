@@ -31,7 +31,9 @@ export function DepositForm() {
 
       if (result.code === '201' && result.data?.payment_url) {
         // Redirection vers la page de paiement de CinetPay
-        window.location.href = result.data.payment_url;
+        if (typeof window !== 'undefined') {
+          window.location.href = result.data.payment_url;
+        }
       } else {
         setError(result.description || result.error || 'Erreur lors de l\'initialisation du paiement.');
       }

@@ -21,7 +21,9 @@ export function ShareButtons({ title }: ShareButtonsProps) {
   const [url, setUrl] = useState('');
 
   useEffect(() => {
-    setUrl(window.location.href);
+    if (typeof window !== 'undefined') {
+      setUrl(window.location.href);
+    }
   }, []);
 
   if (!url) {

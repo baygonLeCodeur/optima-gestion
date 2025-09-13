@@ -27,7 +27,9 @@ export function LeadCommunication({ lead, onSendEmail, onLogWhatsApp }: LeadComm
         return;
     }
     
-    window.open(`https://wa.me/${lead.phone_number.replace(/\D/g, '')}`, '_blank');
+    if (typeof window !== 'undefined') {
+        window.open(`https://wa.me/${lead.phone_number.replace(/\D/g, '')}`, '_blank');
+    }
     
     startTransition(async () => {
         const result = await onLogWhatsApp();

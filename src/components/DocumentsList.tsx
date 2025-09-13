@@ -64,7 +64,7 @@ export const DocumentsList = () => {
     }
 
     const handleView = (url: string | null) => {
-        if (url) {
+        if (url && typeof window !== 'undefined') {
             window.open(url, '_blank');
         } else {
             toast({ title: 'Info', description: 'Aucun aperçu disponible (URL manquante).' });
