@@ -1,6 +1,7 @@
 // src/components/header.tsx
 'use client';
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Menu } from 'lucide-react';
@@ -10,8 +11,13 @@ import { useMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Icons } from './icons';
-import { NotificationBell } from './NotificationBell';
 import { logout } from '@/app/auth/actions';
+
+// Importation dynamique pour NotificationBell
+const NotificationBell = dynamic(() => import('./NotificationBell').then(mod => mod.NotificationBell), {
+  ssr: false,
+  loading: () => <div className="h-9 w-9 bg-gray-200 rounded-full animate-pulse" />,
+});
 
 const mainNavLinks = [
   { href: '/', label: 'Accueil' },
