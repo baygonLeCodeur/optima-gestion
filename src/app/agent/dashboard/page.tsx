@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tables } from '@/types/supabase';
 import { DepositForm } from '@/components/DepositForm';
 import { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
+export const dynamic = 'force-dynamic';
 
 type SupabaseServerClient = SupabaseClient;
 

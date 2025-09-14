@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { AgentLeadTable } from '@/components/AgentLeadTable';
 import { Tables } from '@/types/supabase';
+export const dynamic = 'force-dynamic';
 
 export type Lead = Tables<'leads'>;
 
