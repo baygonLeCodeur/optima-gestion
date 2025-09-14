@@ -74,9 +74,7 @@ export default function ProfilePage() {
             <DocumentsList />
           </TabsContent>
           <TabsContent value="payments" className="mt-4">
-            <ClientOnlyWrapper fallback={<div className="flex justify-center items-center h-40">Chargement...</div>}>
-              <PaymentView />
-            </ClientOnlyWrapper>
+            <PaymentView />
           </TabsContent>
         </Tabs>
 
