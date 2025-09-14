@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/types/supabase';
@@ -30,9 +31,14 @@ import {
     Label,
     ComparisonBar,
     Switch,
-    SearchResultsMap
 } from '@/components';
 import { List, Grid, Map as MapIcon } from 'lucide-react';
+
+// Importation dynamique pour le composant de carte
+const SearchResultsMap = dynamic(() => import('@/components/SearchResultsMap'), {
+    ssr: false,
+    loading: () => <Skeleton className="h-[600px] w-full" />,
+});
 
 interface FiltersState {
     price: { min: number; max: number };
