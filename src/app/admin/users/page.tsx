@@ -1,10 +1,28 @@
+// src/app/admin/users/page.tsx
 "use client";
 
 import React from 'react';
+import dynamic from 'next/dynamic'; // 1. Importer dynamic
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-import { UserList } from '@/components';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton'; // Optionnel mais recommandé
+
+// 2. Importer UserList de manière dynamique SANS rendu côté serveur (SSR)
+const UserList = dynamic(
+  () => import('@/components/UserList').then((mod) => mod.UserList), 
+  { 
+    ssr: false,
+    // 3. Afficher un squelette de chargement pendant l'importation
+    loading: () => (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-8 w-full" />
+      </div>
+    )
+  }
+);
 
 const AdminUsersPage = () => {
   return (
@@ -17,6 +35,7 @@ const AdminUsersPage = () => {
             <CardTitle>Liste des Utilisateurs</CardTitle>
           </CardHeader>
           <CardContent>
+            {/* 4. Le composant UserList est maintenant utilisé ici sans risque */}
             <UserList />
           </CardContent>
         </Card>
