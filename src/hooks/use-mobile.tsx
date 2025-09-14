@@ -9,13 +9,14 @@ const useMobile = (query: string = '(max-width: 768px)') => {
     const mediaQuery = window.matchMedia(query);
     const handleChange = () => setIsMobile(mediaQuery.matches);
 
-    // Set initial state
+    // Important : On ajoute le listener uniquement après le montage côté client
+    // pour éviter les erreurs SSR et les problèmes d'hydratation.
+    mediaQuery.addEventListener('change', handleChange);
+    
+    // On définit l'état initial après le montage.
     handleChange();
 
-    // Add listener for changes
-    mediaQuery.addEventListener('change', handleChange);
-
-    // Cleanup listener on unmount
+    // Nettoyage du listener lors du démontage du composant.
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [query]);
 
