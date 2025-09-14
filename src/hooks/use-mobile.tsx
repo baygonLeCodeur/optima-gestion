@@ -1,22 +1,30 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useIsClient } from './use-is-client'; // Importer le hook
 
 const useMobile = (query: string = '(max-width: 768px)') => {
-  const [isMobile, setIsMobile] = useState(false);
+  const isClient = useIsClient(); // Utiliser le hook pour vérifier si on est côté client
 
+  // Retourner `false` (ou une valeur par défaut) côté serveur
+  if (!isClient) {
+    return false;
+  }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [isMobile, setIsMobile] = useState(
+    () => window.matchMedia(query).matches
+  );
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     const mediaQuery = window.matchMedia(query);
     const handleChange = () => setIsMobile(mediaQuery.matches);
 
-    // Important : On ajoute le listener uniquement après le montage côté client
-    // pour éviter les erreurs SSR et les problèmes d'hydratation.
     mediaQuery.addEventListener('change', handleChange);
     
-    // On définit l'état initial après le montage.
-    handleChange();
-
-    // Nettoyage du listener lors du démontage du composant.
+    // Pas besoin d'appeler handleChange ici car l'état initial est déjà correct
+    
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [query]);
 
