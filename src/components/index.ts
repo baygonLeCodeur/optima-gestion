@@ -38,55 +38,56 @@ export * from './ui/tooltip';
 // Composants personnalisés
 export { default as Header } from './header';
 export { default as Footer } from './footer';
-export * from './hero';
-export * from './testimonials';
-export * from './catch-phrase';
+export { Hero } from './hero'; // CORRIGÉ
+export { Testimonials } from './testimonials'; // CORRIGÉ
+export { CatchPhrase } from './catch-phrase'; // CORRIGÉ
 export { default as PropertyCard } from './property-card';
-export * from './similar-properties';
-export * from './image-gallery';
+export { SimilarProperties } from './similar-properties';
+export { ImageGallery } from './image-gallery';
 export { default as LocationInput } from './location-input';
-export * from './agent-contact-form';
+export { AgentContactForm } from './agent-contact-form';
 export { default as ActionSelect } from './action-select';
 export { PropertyTypeSelect } from './property-type-select';
-export * from './icons';
+export { Icons } from './icons';
 
 // Composants du dashboard client
-export * from './FavoritesList';
-export * from './SavedSearchesList';
-export * from './VisitsHistoryList';
-export * from './DocumentsList';
-export * from './PaymentsList';
-export * from './PaymentView';
-export * from './ComparisonBar';
-export * from './ComparisonDialog';
-export * from './ClientUpcomingVisitsWidget';
-export * from './RecentFavoritesWidget';
-export * from './SavedSearchesWidget';
-export * from './RecommendedProperties';
-export * from './PandaDocSigningModal';
+export { FavoritesList } from './FavoritesList';
+export { SavedSearchesList } from './SavedSearchesList';
+export { VisitsHistoryList } from './VisitsHistoryList';
+export { DocumentsList } from './DocumentsList';
+export { PaymentsList } from './PaymentsList';
+export { PaymentView } from './PaymentView';
+export { ComparisonBar } from './ComparisonBar';
+export { ComparisonDialog } from './ComparisonDialog';
+export { ClientUpcomingVisitsWidget } from './ClientUpcomingVisitsWidget';
+export { RecentFavoritesWidget } from './RecentFavoritesWidget';
+export { default as SavedSearchesWidget } from './SavedSearchesWidget';
+export { RecommendedProperties } from './RecommendedProperties';
+export { PandaDocSigningModal } from './PandaDocSigningModal';
 
 // Composants du dashboard agent
-export * from './AgentLeadList';
-export * from './AgentPropertyList';
-export * from './AgentUpcomingVisitsWidget';
-export * from './AgentVisitList';
-export * from './RecentActivityWidget';
+export { AgentLeadList } from './AgentLeadList';
+export { default as AgentPropertyList } from './AgentPropertyList';
+export { AgentUpcomingVisitsWidget } from './AgentUpcomingVisitsWidget';
+export { AgentVisitList } from './AgentVisitList';
+export { default as RecentActivityWidget } from './RecentActivityWidget';
 
 // Composants de recherche
 export { default as SearchFilters } from './SearchFilters';
+export type { FiltersState } from './SearchFilters';
 export { default as PropertyListItem } from './PropertyListItem';
-export * from './SearchResultsMap';
+export { default as SearchResultsMap } from './SearchResultsMap';
 
 
 // Composants partagés
-export * from './Map';
-export * from './NotificationBell';
-export * from './NotificationsList';
-export * from './UserList';
-export * from './ShareButtons';
-export * from './VirtualTour';
-export * from './VisitRequestForm';
-export * from './PropertyForm';
-export * from './PropertyTypeManager';
-export * from './ProfileForm';
-export * from './ClientOnlyWrapper';
+export { Map } from './Map';
+export { NotificationBell } from './NotificationBell';
+export { NotificationsList } from './NotificationsList';
+export { UserList } from './UserList';
+export { ShareButtons } from './ShareButtons';
+export { VirtualTour } from './VirtualTour';
+export { VisitRequestForm } from './VisitRequestForm';
+export { propertySchema, default as PropertyForm } from './PropertyForm';
+export { PropertyTypeManager } from './PropertyTypeManager';
+export { ProfileForm } from './ProfileForm';
+export { ClientOnlyWrapper } from './ClientOnlyWrapper';

@@ -25,7 +25,7 @@ interface SearchResultsMapProps {
 }
 
 // --- Composant ---
-export function SearchResultsMap({ properties }: SearchResultsMapProps) {
+const SearchResultsMap = ({ properties }: SearchResultsMapProps) => {
   // Filtre les propriétés qui n'ont pas de coordonnées valides
   const validProperties = properties.filter(p => p.latitude != null && p.longitude != null);
 

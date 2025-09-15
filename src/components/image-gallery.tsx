@@ -35,6 +35,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           <button
             key={index}
             onClick={() => setSelectedImage(image)}
+            aria-label={`Afficher l'image ${index + 1}`}
             className={cn(
               'rounded-lg overflow-hidden border-2 transition-all',
               selectedImage === image ? 'border-green-500' : 'border-transparent'

@@ -14,7 +14,7 @@ interface SavedSearchesWidgetProps {
   onSeeAll: () => void;
 }
 
-export function SavedSearchesWidget({ searches, isLoading, onSeeAll }: SavedSearchesWidgetProps) {
+const SavedSearchesWidget = ({ searches, isLoading, onSeeAll }: SavedSearchesWidgetProps) => {
   const router = useRouter();
   
     const handleRedirection = (search: SavedSearch) => {

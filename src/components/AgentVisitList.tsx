@@ -29,13 +29,13 @@ export function AgentVisitList({ title, visits }: AgentVisitListProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const handleStatusUpdate = (visitId: string, newStatus: 'confirmed' | 'canceled') => {
+  const handleStatusUpdate = (visitId: string, newStatus: 'Confirmée' | 'Annulée') => {
     startTransition(async () => {
       const result = await updateVisitStatusAction(visitId, newStatus);
       if (result.success) {
         toast({
           title: 'Statut mis à jour',
-          description: `La visite a bien été marquée comme ${newStatus === 'confirmed' ? 'confirmée' : 'annulée'}.`,
+          description: `La visite a bien été marquée comme ${newStatus === 'Confirmée' ? 'confirmée' : 'annulée'}.`,
         });
       } else {
         toast({
@@ -91,10 +91,10 @@ export function AgentVisitList({ title, visits }: AgentVisitListProps) {
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
-                      <Button size="sm" onClick={() => handleStatusUpdate(visit.id, 'confirmed')}>
+                      <Button size="sm" onClick={() => handleStatusUpdate(visit.id, 'Confirmée')}>
                         Confirmer
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(visit.id, 'canceled')}>
+                      <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(visit.id, 'Annulée')}>
                         Annuler
                       </Button>
                     </>
