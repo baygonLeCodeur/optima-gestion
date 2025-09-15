@@ -269,10 +269,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-      
-      <div className="w-full">
-        <Footer />
-      </div>
     </div>
   );
 }
