@@ -29,7 +29,7 @@ export default function RootLayout({
         {/* Add Pannellum JS script */}
         <Script
           src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"
-          strategy="beforeInteractive" // Load before the page becomes interactive
+          strategy="afterInteractive"
         />
       </body>
     </html>

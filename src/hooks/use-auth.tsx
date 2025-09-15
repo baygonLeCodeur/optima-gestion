@@ -11,7 +11,7 @@ type AuthContextType = {
   loading: boolean;
   isAdmin: boolean;
   isAgent: boolean;
-  isClient: boolean; // <-- Ajout du nouveau rôle
+  isClientRole: boolean; // Renommé pour éviter la confusion avec isClient (hydratation)
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,19 +19,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 type UserWithRole = Pick<Tables<'users'>, 'role'>;
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  // Vérification d'hydratation
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAgent, setIsAgent] = useState(false);
-  const [isClient, setIsClient] = useState(false); // <-- Ajout de l'état pour le client
+  const [isClientRole, setIsClientRole] = useState(false); // Renommé pour éviter la confusion
   const supabase = createClient();
 
   useEffect(() => {
+    // Ne pas initialiser l'authentification tant qu'on n'est pas côté client
+    if (!isClient) return;
+
     const getUserAndSetRole = async (currentUser: User | null) => {
       // Réinitialiser les rôles par défaut
       setIsAdmin(false);
       setIsAgent(false);
-      setIsClient(false);
+      setIsClientRole(false);
 
       if (currentUser) {
         const { data: userData } = await supabase
@@ -42,12 +51,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (userData) {
           const typedUser = userData as UserWithRole;
-          // --- DÉBUT DE LA CORRECTION ---
           // Définit les états en fonction du rôle trouvé
           setIsAdmin(typedUser.role === 'admin');
           setIsAgent(typedUser.role === 'agent');
-          setIsClient(typedUser.role === 'client');
-          // --- FIN DE LA CORRECTION ---
+          setIsClientRole(typedUser.role === 'client');
         }
       }
       setUser(currentUser);
@@ -72,9 +79,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     initializeAuth();
 
-  }, []);
+  }, [isClient]); // Ajouter isClient comme dépendance
 
-  const value = { user, loading, isAdmin, isAgent, isClient }; // <-- Ajout de isClient à la valeur du contexte
+  // Modifier la valeur retournée pour inclure la vérification d'hydratation
+  const value = { 
+    user, 
+    loading: loading || !isClient, // Garder loading=true jusqu'à l'hydratation
+    isAdmin: isClient && isAdmin, // Désactiver les rôles jusqu'à l'hydratation
+    isAgent: isClient && isAgent, 
+    isClientRole: isClient && isClientRole // Renommé pour éviter la confusion
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

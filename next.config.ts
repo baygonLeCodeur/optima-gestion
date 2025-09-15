@@ -8,6 +8,12 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  
+  // Ajouter cette section pour Genkit AI :
+  experimental: {
+    serverComponentsExternalPackages: ['genkit', '@genkit-ai/googleai'],
+  },
+  
   webpack: (config, { isServer }) => {
     // Résoudre les problèmes avec les modules qui utilisent des APIs du navigateur
     if (!isServer) {
@@ -16,11 +22,15 @@ const nextConfig: NextConfig = {
         fs: false,
         net: false,
         tls: false,
+        // Ajouter ces lignes pour Genkit AI :
+        child_process: false,
+        worker_threads: false,
       };
     }
     
     return config;
   },
+  
   images: {
     // On garde le tableau remotePatterns existant
     remotePatterns: [

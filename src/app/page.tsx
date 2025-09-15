@@ -104,7 +104,7 @@ export default function Home() {
     };
 
     fetchProperties();
-  }, [toast]);
+  }, []);
 
   const handleContactSubmit = async (values: ContactFormValues) => {
     try {

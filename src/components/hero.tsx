@@ -17,6 +17,12 @@ interface PropertyType {
 export function Hero() {
   const router = useRouter();
 
+  // Vérification d'hydratation
+  const [isClient, setIsClient] = React.useState(false);
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // États principaux du formulaire
   const [location, setLocation] = React.useState<string>("");
   const [propertyType, setPropertyType] = React.useState<string>("");
@@ -32,8 +38,8 @@ export function Hero() {
 
   // Effet pour récupérer les types de biens quand la localisation change
   React.useEffect(() => {
-    if (!location) {
-      // Réinitialiser tout si pas de localisation
+    if (!isClient || !location) {
+      // Réinitialiser tout si pas de localisation ou pas encore côté client
       setPropertyTypes([]);
       setOperations([]);
       setPropertyType("");
@@ -61,12 +67,12 @@ export function Hero() {
     };
 
     fetchPropertyTypes();
-  }, [location]);
+  }, [isClient, location]);
 
   // Effet pour récupérer les opérations quand le type de bien change
   React.useEffect(() => {
-    if (!location || !propertyType) {
-      // Réinitialiser les opérations si pas de localisation ou de type
+    if (!isClient || !location || !propertyType) {
+      // Réinitialiser les opérations si pas côté client, pas de localisation ou de type
       setOperations([]);
       setOperation("");
       return;
@@ -92,7 +98,7 @@ export function Hero() {
     };
 
     fetchOperations();
-  }, [location, propertyType]);
+  }, [isClient, location, propertyType]);
   
   // Gestionnaire pour la sélection de localisation
   const handleLocationSelect = (selectedLocation: string) => {
@@ -137,7 +143,7 @@ export function Hero() {
   };
 
   // Déterminer si le bouton de recherche doit être activé
-  const isSearchEnabled = location && propertyType && operation && !isTypesLoading && !isOperationsLoading;
+  const isSearchEnabled = isClient && location && propertyType && operation && !isTypesLoading && !isOperationsLoading;
 
   return (
     <section>
