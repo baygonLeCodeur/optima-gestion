@@ -177,32 +177,7 @@ function DashboardClientUI() {
     }
   }, [user, authLoading, router]);
   
-  // NOTE : Les effets de rafraîchissement automatique sont conservés tels quels
-  // mais sont maintenant à l'intérieur de ce composant client.
-  useEffect(() => {
-    const hasRefreshed = localStorage.getItem('dashboard_auto_refreshed');
-    const currentTime = Date.now();
-    
-    if (!hasRefreshed) {
-      localStorage.setItem('dashboard_auto_refreshed', currentTime.toString());
-      const refreshTimer = setTimeout(() => window.location.reload(), 5000);
-      return () => clearTimeout(refreshTimer);
-    } else {
-      const refreshTime = parseInt(hasRefreshed);
-      if (currentTime - refreshTime > 60000) {
-        localStorage.removeItem('dashboard_auto_refreshed');
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const emergencyRefresh = setTimeout(() => {
-      if (!user && !authLoading) {
-        window.location.reload();
-      }
-    }, 10000);
-    return () => clearTimeout(emergencyRefresh);
-  }, [user, authLoading]);
+  
 
   // L'état de chargement initial est géré ici
   if (authLoading || !isInitialized) {
