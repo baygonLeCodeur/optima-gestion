@@ -1,9 +1,9 @@
 /* src/hooks/use-auth.tsx */
 'use client';
 
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 import type { Tables } from '@/types/supabase';
 
 type AuthContextType = {
@@ -11,7 +11,8 @@ type AuthContextType = {
   loading: boolean;
   isAdmin: boolean;
   isAgent: boolean;
-  isClientRole: boolean; // Renommé pour éviter la confusion avec isClient (hydratation)
+  isClientRole: boolean;
+  refreshSession: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,7 +20,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 type UserWithRole = Pick<Tables<'users'>, 'role'>;
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  // Vérification d'hydratation
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
     setIsClient(true);
@@ -29,65 +29,76 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAgent, setIsAgent] = useState(false);
-  const [isClientRole, setIsClientRole] = useState(false); // Renommé pour éviter la confusion
+  const [isClientRole, setIsClientRole] = useState(false);
   const supabase = createClient();
 
+  const getUserAndSetRole = useCallback(async (currentUser: User | null) => {
+    setIsAdmin(false);
+    setIsAgent(false);
+    setIsClientRole(false);
+
+    if (currentUser) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (userData) {
+        const typedUser = userData as UserWithRole;
+        setIsAdmin(typedUser.role === 'admin');
+        setIsAgent(typedUser.role === 'agent');
+        setIsClientRole(typedUser.role === 'client');
+      }
+    }
+    setUser(currentUser);
+  }, [supabase]);
+
   useEffect(() => {
-    // Ne pas initialiser l'authentification tant qu'on n'est pas côté client
     if (!isClient) return;
 
-    const getUserAndSetRole = async (currentUser: User | null) => {
-      // Réinitialiser les rôles par défaut
-      setIsAdmin(false);
-      setIsAgent(false);
-      setIsClientRole(false);
-
-      if (currentUser) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', currentUser.id)
-          .single();
-
-        if (userData) {
-          const typedUser = userData as UserWithRole;
-          // Définit les états en fonction du rôle trouvé
-          setIsAdmin(typedUser.role === 'admin');
-          setIsAgent(typedUser.role === 'agent');
-          setIsClientRole(typedUser.role === 'client');
-        }
-      }
-      setUser(currentUser);
-    };
+    let isMounted = true;
 
     const initializeAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      await getUserAndSetRole(user);
-      setLoading(false);
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          const currentUser = session?.user ?? null;
-          await getUserAndSetRole(currentUser);
-        }
-      );
-        
-      return () => {
-        subscription.unsubscribe();
-      };
+      if (isMounted) {
+        await getUserAndSetRole(user);
+        setLoading(false);
+      }
     };
 
     initializeAuth();
 
-  }, [isClient]); // Ajouter isClient comme dépendance
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (isMounted) {
+          const currentUser = session?.user ?? null;
+          await getUserAndSetRole(currentUser);
+        }
+      }
+    );
+      
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
 
-  // Modifier la valeur retournée pour inclure la vérification d'hydratation
+  }, [isClient, getUserAndSetRole, supabase]);
+
+  const refreshSession = useCallback(async () => {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    await getUserAndSetRole(user);
+    setLoading(false);
+  }, [getUserAndSetRole, supabase]);
+
   const value = { 
     user, 
-    loading: loading || !isClient, // Garder loading=true jusqu'à l'hydratation
-    isAdmin: isClient && isAdmin, // Désactiver les rôles jusqu'à l'hydratation
+    loading: loading || !isClient,
+    isAdmin: isClient && isAdmin,
     isAgent: isClient && isAgent, 
-    isClientRole: isClient && isClientRole // Renommé pour éviter la confusion
+    isClientRole: isClient && isClientRole,
+    refreshSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
