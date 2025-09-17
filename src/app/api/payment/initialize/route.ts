@@ -4,7 +4,7 @@ import cinetPayService from '@/lib/cinetpay';
 import { CinetPayInitRequest } from '@/types/payment';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { getBaseUrl } from '@/lib/utils';
+//import { getBaseUrl } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
   try {
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     }
     
     const transaction_id = `txn_${user.id}_${Date.now()}`;
-    const baseUrl = getBaseUrl();
+    //const baseUrl = getBaseUrl();
 
     const paymentData: Omit<CinetPayInitRequest, 'apikey' | 'site_id'> = {
       transaction_id: transaction_id,
@@ -87,8 +87,8 @@ export async function POST(req: NextRequest) {
       customer_country: 'CI',
       customer_state: '',
       customer_zip_code: '',
-      return_url: `${baseUrl}/agent/dashboard?transaction_id=${transaction_id}`,
-      notify_url: `${baseUrl}/api/payment/notify`,
+      return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/agent/dashboard?transaction_id=${transaction_id}`,
+      notify_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/notify`,
       channels: 'ALL',
     };
 
