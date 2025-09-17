@@ -3,8 +3,19 @@ import { NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
+import { config, validateConfig, validateUrls } from '@/lib/config';
 
 export async function POST(req: Request) {
+    // Validation préalable de la configuration
+    try {
+        validateConfig();
+        validateUrls();
+    } catch (configError) {
+        console.error('Erreur de configuration:', configError);
+        return NextResponse.json({ 
+            message: `Erreur de configuration: ${configError.message}` 
+        }, { status: 500 });
+    }
     
     const cookieStore = {
         get(name: string) {
@@ -70,22 +81,28 @@ export async function POST(req: Request) {
            return NextResponse.json({ message: "Erreur lors de la création de l'enregistrement du paiement." }, { status: 500 });
        }
        
+       // Utiliser la configuration centralisée avec URLs validées
+       const { notifyUrl, returnUrl } = validateUrls();
+       
        const cinetpayData = {
-           apikey: process.env.CINETPAY_API_KEY,
-           site_id: process.env.CINETPAY_SITE_ID,
+           apikey: config.cinetpay.apiKey,
+           site_id: config.cinetpay.siteId,
            transaction_id,
            amount,
            currency: 'XOF',
            description,
-           return_url: `${process.env.NEXT_PUBLIC_APP_URL}/profil/paiements`,
-           notify_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/webhook`,
+           return_url: returnUrl,
+           notify_url: notifyUrl,
            customer_name: user.user_metadata?.full_name || 'Client',
            customer_surname: '',
            customer_email: user.email,
            customer_phone_number: phoneNumber,
        };
 
-       console.log('Envoi des données à CinetPay :', cinetpayData);
+       console.log('Envoi des données à CinetPay :', {
+           ...cinetpayData,
+           apikey: '[MASKED]' // Masquer la clé API dans les logs
+       });
 
        const cinetpayResponse = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
            method: 'POST',

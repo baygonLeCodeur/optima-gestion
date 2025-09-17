@@ -1,8 +1,7 @@
 // lib/cinetpay.ts
 import axios from 'axios';
 import { CinetPayInitRequest, CinetPayInitResponse, CinetPayVerificationResponse } from '@/types/payment';
-
-const CINETPAY_API_URL = 'https://api-checkout.cinetpay.com/v2';
+import { config } from '@/lib/config';
 
 class CinetPayService {
   private apiKey: string;
@@ -10,11 +9,11 @@ class CinetPayService {
 
   constructor( ) {
     // AJOUT: Vérification que les variables d'environnement sont bien chargées.
-    if (!process.env.CINETPAY_APIKEY || !process.env.CINETPAY_SITE_ID) {
+    if (!config.cinetpay.apiKey || !config.cinetpay.siteId) {
       throw new Error("Les variables d'environnement CINETPAY_APIKEY et CINETPAY_SITE_ID sont requises.");
     }
-    this.apiKey = process.env.CINETPAY_APIKEY;
-    this.siteId = process.env.CINETPAY_SITE_ID;
+    this.apiKey = config.cinetpay.apiKey;
+    this.siteId = config.cinetpay.siteId;
   }
 
   async initializePayment(data: Omit<CinetPayInitRequest, 'apikey' | 'site_id'>): Promise<CinetPayInitResponse> {
@@ -24,8 +23,26 @@ class CinetPayService {
       ...data,
     };
 
+    // Validation des données critiques avant envoi
+    if (!data.notify_url || !data.return_url) {
+      throw new Error('Les URLs notify_url et return_url sont obligatoires');
+    }
+
+    // Validation que les URLs sont bien formées
     try {
-      const response = await axios.post<CinetPayInitResponse>(`${CINETPAY_API_URL}/payment`, payload, {
+      new URL(data.notify_url);
+      new URL(data.return_url);
+    } catch (urlError) {
+      throw new Error(`URLs invalides - notify_url: ${data.notify_url}, return_url: ${data.return_url}`);
+    }
+
+    try {
+      console.log('CinetPay payload:', {
+        ...payload,
+        apikey: '[MASKED]' // Masquer la clé API dans les logs
+      });
+      
+      const response = await axios.post<CinetPayInitResponse>(`${config.cinetpay.apiUrl}/payment`, payload, {
         headers: { 'Content-Type': 'application/json' },
       });
       return response.data;
@@ -33,7 +50,11 @@ class CinetPayService {
       // CHANGEMENT: Gestion d'erreur améliorée pour logger les détails de l'API.
       if (axios.isAxiosError(error) && error.response) {
         console.error('CinetPay API Error Response:', error.response.data);
-        throw new Error(`Erreur API CinetPay: ${error.response.data.description || error.message}`);
+        console.error('CinetPay Request payload:', {
+          ...payload,
+          apikey: '[MASKED]'
+        });
+        throw new Error(`Erreur API CinetPay: ${error.response.data.description || error.response.data.message || error.message}`);
       }
       throw new Error(`Erreur lors de l'initialisation du paiement: ${error.message}`);
     }
@@ -47,7 +68,7 @@ class CinetPayService {
     };
 
     try {
-      const response = await axios.post<CinetPayVerificationResponse>(`${CINETPAY_API_URL}/payment/check`, payload, {
+      const response = await axios.post<CinetPayVerificationResponse>(`${config.cinetpay.apiUrl}/payment/check`, payload, {
         headers: { 'Content-Type': 'application/json' },
       });
       return response.data;
