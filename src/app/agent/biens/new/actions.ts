@@ -9,12 +9,16 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 type ActionValues = z.infer<typeof propertySchema> & { image_paths: string[] };
 
-export async function createPropertyAction(values: ActionValues) {
+export async function createPropertyAction(values: ActionValues): Promise<{
+  success: boolean;
+  error?: string;
+  data?: any;
+}> {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error("User not authenticated");
+    return { success: false, error: "User not authenticated" };
   }
 
   const typedSupabase = supabase as unknown as SupabaseClient<Database>;
@@ -23,10 +27,10 @@ export async function createPropertyAction(values: ActionValues) {
   // On valide les données, mais surtout, on s'assure que les champs obligatoires ne sont pas null.
   
   if (values.price == null || values.price <= 0) {
-    throw new Error("Le prix est obligatoire et doit être positif.");
+    return { success: false, error: "Le prix est obligatoire et doit être positif." };
   }
   if (values.area_sqm == null || values.area_sqm <= 0) {
-    throw new Error("La superficie est obligatoire et doit être positive.");
+    return { success: false, error: "La superficie est obligatoire et doit être positive." };
   }
   // Ajoutez d'autres vérifications si nécessaire pour les champs obligatoires
 
@@ -63,8 +67,12 @@ export async function createPropertyAction(values: ActionValues) {
 
   if (error) {
     console.error('Error creating property:', error);
-    throw error;
+    // On vérifie si le message d'erreur vient de notre trigger
+    if (error.message.includes('INSUFFICIENT_FUNDS')) {
+      return { success: false, error: "Le solde de votre portefeuille est insuffisant pour activer cette annonce." };
+    }
+    return { success: false, error: "Une erreur est survenue lors de la création de l'annonce." };
   }
 
-  return data;
+  return { success: true, data };
 }

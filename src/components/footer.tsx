@@ -26,7 +26,7 @@ export default function Footer() { // Ajout de 'export default'
           <h3 className="font-bold text-lg mb-4">Contactez-nous</h3>
           <p className="text-gray-400">Angré, Boulevard Latrille, non loin du 22è arrondissement</p>
           <p className="text-gray-400">Email: contact@optimagestion.net</p>
-          <p className="text-gray-400">Téléphone: +225 07 48 01 14 67</p>
+          <p className="text-gray-400">Téléphone: +225 07 07 81 16 09</p>
         </div>
         <div>
           <h3 className="font-bold text-lg mb-4">Suivez-nous</h3>

@@ -1,10 +1,5 @@
--- Migration: Create property activation logic
--- This migration creates a trigger function that automatically handles the activation
--- of a new property upon its creation.
-
--- Step 1: Create the trigger function `handle_new_property_activation`
 CREATE OR REPLACE FUNCTION public.handle_new_property_activation()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 DECLARE
     -- The activation cost is hardcoded here.
     -- For more flexibility, this could be stored in a configuration table in the future.
@@ -45,13 +40,4 @@ BEGIN
 
     RETURN NEW;
 END;
-$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Step 2: Create the trigger that executes the function after a new property is inserted.
-CREATE TRIGGER on_property_insert_activate
-AFTER INSERT ON public.properties
-FOR EACH ROW
-EXECUTE FUNCTION public.handle_new_property_activation();
-
-COMMENT ON FUNCTION public.handle_new_property_activation() IS 'Trigger function to handle the activation of a new property. It checks the agent''s wallet, deducts the activation fee, logs the activation, and marks the property as featured. Rolls back the transaction if funds are insufficient.';
-COMMENT ON TRIGGER on_property_insert_activate ON public.properties IS 'After inserting a new property, automatically handles the activation fee deduction from the agent''s wallet.';
+$$ LANGUAGE plpgsql SECURITY DEFINER;
