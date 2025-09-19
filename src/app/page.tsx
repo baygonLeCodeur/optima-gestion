@@ -23,6 +23,7 @@ import { Hero } from '@/components/hero';
 import { Tables } from '@/types/supabase';
 import { Testimonials } from '@/components/testimonials';
 import { PropertyCardType } from '@/types';
+import { sendContactEmail } from './actions';
 
 const contactFormSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères." }),
@@ -106,33 +107,28 @@ export default function Home() {
     fetchProperties();
   }, []);
 
+
+// ... (le reste des imports)
+
+// ... (le reste du code jusqu'à la fonction handleContactSubmit)
+
   const handleContactSubmit = async (values: ContactFormValues) => {
-    try {
-      const response = await fetch('/api/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+    const result = await sendContactEmail(values);
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Une erreur s'est produite lors de l'envoi.");
-      }
-
-      toast({ title: 'Succès', description: 'Votre message a bien été envoyé ! Nous vous contacterons bientôt.' });
-      form.reset();
-    } catch (error: any) {
-      console.error('Error submitting contact form:', error);
+    if (!result.success) {
       toast({
         title: 'Erreur',
-        description: error.message || "Votre message n'a pas pu être envoyé. Veuillez réessayer.",
+        description: result.error || "Votre message n'a pas pu être envoyé. Veuillez réessayer.",
         variant: 'destructive',
       });
+    } else {
+      toast({ title: 'Succès', description: result.message || 'Votre message a bien été envoyé !' });
+      form.reset();
     }
   };
+
+// ... (le reste du composant)
+
 
   return (
     <div className="flex flex-col min-h-screen items-center">
@@ -193,7 +189,7 @@ export default function Home() {
 
         <section id="contact" className="py-12 md:py-24">
           <div className="container">
-            <h2 className="text-3xl font-bold text-center mb-8">Contactez-nous</h2>
+            <h2 className="text-3xl font-bold text-center mb-8">Contactez-nous pour pouvoir faire vos annonces sur la plateforme</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
                 <h3 className="text-xl font-semibold mb-4">Nos coordonnées</h3>
@@ -203,7 +199,7 @@ export default function Home() {
                 </div>
                 <div className="flex items-center gap-4 mb-4">
                   <Phone className="h-6 w-6 text-primary" />
-                  <span>+225 07 48 01 14 67</span>
+                  <span>+225 07 07 81 16 09</span>
                 </div>
                 <div className="flex items-center gap-4">
                   <Mail className="h-6 w-6 text-primary" />
@@ -249,7 +245,7 @@ export default function Home() {
                             <FormLabel>Votre message</FormLabel>
                             <FormControl>
                               <Textarea
-                                placeholder="Bonjour, je suis intéressé par vos services..."
+                                placeholder="Faites-nous parvenir le numéro que vous utilisez principalement pour communiquer avec vos clients."
                                 className="resize-none"
                                 {...field}
                               />
@@ -269,6 +265,7 @@ export default function Home() {
           </div>
         </section>
       </main>
+      <Footer />
     </div>
   );
 }
