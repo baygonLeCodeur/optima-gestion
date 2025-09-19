@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-const ACTIVATION_COST = Number(process.env.NEXT_PUBLIC_PROPERTY_ACTIVATION_COST) || 5000;
+const ACTIVATION_COST = Number(process.env.NEXT_PUBLIC_PROPERTY_ACTIVATION_COST) || 250;
 
 export function DepositForm() {
   const [amount, setAmount] = useState<number>(ACTIVATION_COST);
